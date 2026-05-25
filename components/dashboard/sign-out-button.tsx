@@ -15,7 +15,7 @@ export function SignOutButton() {
       size="sm"
       disabled={pending}
       onClick={() => startTransition(() => signOut())}
-      className="w-full border-orange-200 text-zinc-600 hover:bg-orange-50 hover:text-[#EA580C]"
+      className="w-full border-white/10 bg-transparent text-zinc-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
     >
       {pending ? (
         <Loader2 className="animate-spin" />

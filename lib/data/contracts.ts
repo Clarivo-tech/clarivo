@@ -1,11 +1,4 @@
-import {
-  addDays,
-  endOfMonth,
-  isWithinInterval,
-  parseISO,
-  startOfMonth,
-  startOfToday,
-} from "date-fns";
+import { addDays, parseISO, startOfToday } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Contract,
@@ -65,41 +58,38 @@ export async function getContractData(
   );
 }
 
-function isRenewalWithin30Days(renewalDate: string | null): boolean {
+function isRenewalWithinDays(
+  renewalDate: string | null,
+  days: number
+): boolean {
   if (!renewalDate) return false;
   const renewal = parseISO(renewalDate);
   const today = startOfToday();
-  const in30 = addDays(today, 30);
-  return renewal >= today && renewal <= in30;
+  const end = addDays(today, days);
+  return renewal >= today && renewal <= end;
 }
 
 export function computeDashboardStats(
   contracts: Contract[],
   contractData: ContractData[]
 ): DashboardStats {
-  const today = startOfToday();
-  const monthStart = startOfMonth(today);
-  const monthEnd = endOfMonth(today);
-
-  const totalSpend = contractData.reduce(
+  const totalValue = contractData.reduce(
     (sum, row) => sum + (Number(row.contract_value) || 0),
     0
   );
 
-  const renewalsThisMonth = contractData.filter((row) => {
-    if (!row.renewal_date) return false;
-    const renewal = parseISO(row.renewal_date);
-    return isWithinInterval(renewal, { start: monthStart, end: monthEnd });
-  }).length;
+  const renewalsThisYear = contractData.filter((row) =>
+    isRenewalWithinDays(row.renewal_date, 365)
+  ).length;
 
   const expiringSoon = contractData.filter((row) =>
-    isRenewalWithin30Days(row.renewal_date)
+    isRenewalWithinDays(row.renewal_date, 30)
   ).length;
 
   return {
     totalContracts: contracts.length,
-    totalSpend,
-    renewalsThisMonth,
+    totalValue,
+    renewalsThisYear,
     expiringSoon,
   };
 }
@@ -108,7 +98,7 @@ export function getRenewalAlerts(
   contractData: ContractData[]
 ): ContractData[] {
   return contractData
-    .filter((row) => isRenewalWithin30Days(row.renewal_date))
+    .filter((row) => isRenewalWithinDays(row.renewal_date, 30))
     .sort((a, b) => {
       if (!a.renewal_date || !b.renewal_date) return 0;
       return (

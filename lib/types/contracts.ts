@@ -45,7 +45,7 @@ export type ContractData = {
 
 export type DashboardStats = {
   totalContracts: number;
-  totalSpend: number;
-  renewalsThisMonth: number;
+  totalValue: number;
+  renewalsThisYear: number;
   expiringSoon: number;
 };

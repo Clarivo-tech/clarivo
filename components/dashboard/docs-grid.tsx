@@ -105,8 +105,8 @@ function DocCard({
   return (
     <Card
       className={cn(
-        "flex flex-col border-orange-100/80 shadow-sm",
-        showSpinner && "ring-2 ring-[#F97316]/30"
+        "flex flex-col rounded-xl border-zinc-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]",
+        showSpinner && "ring-2 ring-[#F97316]/25"
       )}
     >
       <CardHeader className="pb-3">
@@ -130,7 +130,7 @@ function DocCard({
           <FileStatusBadge status={ui.displayStatus} />
         )}
       </CardContent>
-      <CardFooter className="flex flex-col gap-2 border-t border-orange-50 pt-4">
+      <CardFooter className="flex flex-col gap-2 border-t border-zinc-100 pt-4">
         {ui.showRetry && (
           <Button
             type="button"

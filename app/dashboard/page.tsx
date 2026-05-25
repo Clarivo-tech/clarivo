@@ -18,17 +18,11 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/format";
+import { ContractChat } from "@/components/dashboard/contract-chat";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ContractStatusBadge } from "@/components/dashboard/contract-status-badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -59,30 +53,30 @@ export default async function DashboardPage() {
   const alerts = getRenewalAlerts(contractData);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-10">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
           Dashboard
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Overview of your contracts, spend, and upcoming renewals.
+        <p className="mt-2 text-sm text-zinc-500">
+          Overview of your contracts, portfolio value, and upcoming renewals.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Contracts"
           value={String(stats.totalContracts)}
           icon={FileStack}
         />
         <StatCard
-          title="Total Spend"
-          value={formatCurrency(stats.totalSpend)}
+          title="Total Value"
+          value={formatCurrency(stats.totalValue)}
           icon={DollarSign}
         />
         <StatCard
-          title="Renewals This Month"
-          value={String(stats.renewalsThisMonth)}
+          title="Renewals This Year"
+          value={String(stats.renewalsThisYear)}
           icon={CalendarClock}
         />
         <StatCard
@@ -92,80 +86,113 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-orange-100/80 lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Contracts</CardTitle>
-            <CardDescription>
-              Extracted contract data from your uploaded documents.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {contractData.length === 0 ? (
-              <EmptyState
-                icon={FileStack}
-                title="No contract data yet"
-                description="Upload PDF contracts in My Docs. Once processed, vendor details and dates will appear here."
-                action={
-                  <Link href="/dashboard/docs">
-                    <Button className="bg-[#F97316] text-white hover:bg-[#EA580C]">
-                      <Upload />
-                      Go to My Docs
-                    </Button>
-                  </Link>
-                }
-              />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead>Renewal</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contractData.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="font-medium">
-                        {row.vendor_name ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        {formatContractValue(
-                          row.contract_value,
-                          row.currency
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(row.start_date)}</TableCell>
-                      <TableCell>{formatDate(row.end_date)}</TableCell>
-                      <TableCell>{formatDate(row.renewal_date)}</TableCell>
-                      <TableCell>{row.contract_type ?? "—"}</TableCell>
-                      <TableCell>
-                        <ContractStatusBadge status={row.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <section className="lg:col-span-2">
+          <div className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <div className="border-b border-zinc-100 px-6 py-5">
+              <h2 className="text-base font-semibold text-zinc-900">
+                Contracts
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Extracted data from your uploaded documents.
+              </p>
+            </div>
+            <div className="p-2">
+              {contractData.length === 0 ? (
+                <EmptyState
+                  icon={FileStack}
+                  title="No contract data yet"
+                  description="Upload PDF contracts to see vendor details, values, and renewal dates here."
+                  action={
+                    <Link href="/dashboard/docs">
+                      <Button className="bg-[#F97316] text-white hover:bg-[#EA580C]">
+                        <Upload />
+                        Go to Contracts
+                      </Button>
+                    </Link>
+                  }
+                />
+              ) : (
+                <div className="overflow-x-auto rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-zinc-100 hover:bg-transparent">
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Vendor
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Value
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Start
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          End
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Renewal
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Type
+                        </TableHead>
+                        <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Status
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contractData.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className="border-zinc-100 text-[13px] transition-colors hover:bg-zinc-50/80"
+                        >
+                          <TableCell className="py-3.5 font-medium text-zinc-900">
+                            {row.vendor_name ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-3.5 tabular-nums text-zinc-700">
+                            {formatContractValue(
+                              row.contract_value,
+                              row.currency
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.start_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.end_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.renewal_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {row.contract_type ?? "—"}
+                          </TableCell>
+                          <TableCell className="py-3.5">
+                            <ContractStatusBadge status={row.status} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
 
-        <Card className="border-orange-100/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <section className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+          <div className="border-b border-zinc-100 px-6 py-5">
+            <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-[#F97316]" />
-              Renewal alerts
-            </CardTitle>
-            <CardDescription>
+              <h2 className="text-base font-semibold text-zinc-900">
+                Renewal alerts
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">
               Contracts renewing within the next 30 days.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="p-6">
             {alerts.length === 0 ? (
               <EmptyState
                 icon={CalendarClock}
@@ -178,16 +205,16 @@ export default async function DashboardPage() {
                 {alerts.map((row) => (
                   <li
                     key={row.id}
-                    className="rounded-lg border border-orange-100 bg-orange-50/50 p-3"
+                    className="rounded-lg border border-zinc-100 bg-zinc-50/80 p-4 transition-colors hover:border-orange-200/60 hover:bg-orange-50/30"
                   >
-                    <p className="font-medium text-zinc-900">
+                    <p className="text-sm font-medium text-zinc-900">
                       {row.vendor_name ?? "Unknown vendor"}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-[13px] text-zinc-600">
                       Renews {formatDate(row.renewal_date)}
                     </p>
                     {row.contract_value != null && (
-                      <p className="mt-0.5 text-sm font-medium text-[#F97316]">
+                      <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#F97316]">
                         {formatContractValue(
                           row.contract_value,
                           row.currency
@@ -198,9 +225,11 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
+
+      <ContractChat />
     </div>
   );
 }

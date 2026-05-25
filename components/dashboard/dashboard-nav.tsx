@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/docs", label: "My Docs", icon: FileText, exact: false },
+  { href: "/dashboard/docs", label: "Contracts", icon: FileText, exact: false },
   {
     href: "/dashboard/settings",
     label: "Settings",
@@ -29,7 +29,7 @@ export function DashboardNav() {
   return (
     <SidebarGroup>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
           {navItems.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
@@ -40,12 +40,14 @@ export function DashboardNav() {
                 <SidebarMenuButton
                   isActive={isActive}
                   className={cn(
-                    isActive &&
-                      "bg-[#F97316] text-white hover:bg-[#EA580C] hover:text-white data-active:bg-[#F97316] data-active:text-white"
+                    "h-10 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-[#F97316] text-white shadow-md shadow-orange-500/20 hover:bg-[#EA580C] hover:text-white data-active:bg-[#F97316] data-active:text-white"
+                      : "text-zinc-400 hover:bg-white/[0.06] hover:text-white data-active:text-white"
                   )}
                   render={
                     <Link href={item.href}>
-                      <item.icon />
+                      <item.icon className={cn(isActive && "text-white")} />
                       <span>{item.label}</span>
                     </Link>
                   }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Paperclip, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,9 +47,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50/40 px-4 py-12">
       <div className="mb-8 flex flex-col items-center gap-3">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-[#F97316] shadow-lg shadow-orange-500/25">
-          <Paperclip className="size-7 text-white" strokeWidth={2.25} />
-        </div>
+        <img
+          src="/clarivo-logo.png.PNG"
+          alt="Clarivo"
+          width={36}
+          height={36}
+          style={{ borderRadius: "8px" }}
+        />
         <div className="text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
             Clarivo

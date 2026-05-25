@@ -17,7 +17,21 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell userEmail={user.email ?? "Signed in"}>
+    <DashboardShell
+      userEmail={user.email ?? "Signed in"}
+      logo={
+        <img
+          src="/clarivo-logo.png.PNG"
+          alt="Clarivo"
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            display: "inline-block",
+          }}
+        />
+      }
+    >
       {children}
     </DashboardShell>
   );
