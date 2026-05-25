@@ -30,6 +30,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    return supabaseResponse;
+  }
+
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
 
@@ -41,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
