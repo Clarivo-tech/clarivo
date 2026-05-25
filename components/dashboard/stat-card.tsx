@@ -5,11 +5,15 @@ export function StatCard({
   title,
   value,
   icon: Icon,
+  iconColor,
+  iconBgClassName,
   className,
 }: {
   title: string;
   value: string;
   icon: LucideIcon;
+  iconColor: string;
+  iconBgClassName: string;
   className?: string;
 }) {
   return (
@@ -21,8 +25,13 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[13px] font-medium text-zinc-500">{title}</p>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10">
-          <Icon className="size-4 text-[#F97316]" strokeWidth={2} />
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-lg",
+            iconBgClassName
+          )}
+        >
+          <Icon className="size-4" style={{ color: iconColor }} strokeWidth={2} />
         </div>
       </div>
       <p className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 tabular-nums">

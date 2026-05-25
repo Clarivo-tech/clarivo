@@ -36,6 +36,15 @@ export function formatDate(value: string | null | undefined): string {
   }
 }
 
+export function formatGbp(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   try {
