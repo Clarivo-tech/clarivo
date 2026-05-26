@@ -1,9 +1,4 @@
-import {
-  AlertTriangle,
-  CalendarClock,
-  DollarSign,
-  FileStack,
-} from "lucide-react";
+import { DollarSign, FileStack } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   computeDashboardStats,
@@ -11,9 +6,11 @@ import {
   getContracts,
   getRenewalAlerts,
 } from "@/lib/data/contracts";
+import { getRenewalsInNext12Months } from "@/lib/contracts/renewals-in-range";
 import { formatCurrency } from "@/lib/format";
 import { DashboardInsightsRow } from "@/components/dashboard/dashboard-insights-row";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { RenewalsStatCard } from "@/components/dashboard/renewals-stat-card";
 import { StatCard } from "@/components/dashboard/stat-card";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +32,7 @@ export default async function DashboardPage() {
 
   const stats = computeDashboardStats(contracts, contractData);
   const alerts = getRenewalAlerts(contractData);
+  const renewalsIn12Months = getRenewalsInNext12Months(contractData);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">
@@ -47,7 +45,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           title="Total Contracts"
           value={String(stats.totalContracts)}
@@ -62,19 +60,9 @@ export default async function DashboardPage() {
           iconColor="#34D399"
           iconBgClassName="bg-[#34D399]/15"
         />
-        <StatCard
-          title="Renewals This Year"
-          value={String(stats.renewalsThisYear)}
-          icon={CalendarClock}
-          iconColor="#A78BFA"
-          iconBgClassName="bg-[#A78BFA]/15"
-        />
-        <StatCard
-          title="Contracts Expiring Soon"
-          value={String(stats.expiringSoon)}
-          icon={AlertTriangle}
-          iconColor="#EF4444"
-          iconBgClassName="bg-[#EF4444]/15"
+        <RenewalsStatCard
+          count={stats.renewalsThisYear}
+          renewals={renewalsIn12Months}
         />
       </div>
 

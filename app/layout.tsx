@@ -11,11 +11,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Clarivo",
   description: "AI-powered contract intelligence",
-  icons: {
-    icon: "/clarivo-logo.png.PNG",
-    shortcut: "/clarivo-logo.png.PNG",
-    apple: "/clarivo-logo.png.PNG",
-  },
 };
 
 export default function RootLayout({

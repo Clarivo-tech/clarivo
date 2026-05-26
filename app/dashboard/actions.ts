@@ -5,6 +5,35 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
 
+export async function updateDisplayName(
+  displayName: string
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const trimmed = displayName.trim();
+  if (!trimmed) {
+    return { error: "Display name cannot be empty." };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    data: { display_name: trimmed },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true };
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

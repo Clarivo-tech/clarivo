@@ -1,5 +1,6 @@
 import { addDays, parseISO, startOfToday } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countRenewalsInNext12Months } from "@/lib/contracts/renewals-in-range";
 import type {
   Contract,
   ContractData,
@@ -78,9 +79,7 @@ export function computeDashboardStats(
     0
   );
 
-  const renewalsThisYear = contractData.filter((row) =>
-    isRenewalWithinDays(row.renewal_date, 365)
-  ).length;
+  const renewalsThisYear = countRenewalsInNext12Months(contractData);
 
   const expiringSoon = contractData.filter((row) =>
     isRenewalWithinDays(row.renewal_date, 30)

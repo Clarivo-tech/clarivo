@@ -70,7 +70,7 @@ export default function SignupPage() {
     <div className="min-h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50/40 px-4 py-12">
       <div className="mb-8 flex flex-col items-center gap-3">
         <img
-          src="/clarivo-logo.png.PNG"
+          src="/clarivo-logo.png"
           alt="Clarivo"
           width={36}
           height={36}

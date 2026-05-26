@@ -21,7 +21,7 @@ export default async function DashboardLayout({
       userEmail={user.email ?? "Signed in"}
       logo={
         <img
-          src="/clarivo-logo.png.PNG"
+          src="/clarivo-logo.png"
           alt="Clarivo"
           style={{
             width: "32px",
