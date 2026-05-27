@@ -3,7 +3,7 @@ import type { ContractData } from "@/lib/types/contracts";
 
 const SHORT_NOTICE_DAYS = 60;
 
-function inferHasExitClause(summary: string | null): boolean {
+export function inferHasExitClause(summary: string | null): boolean {
   if (!summary?.trim()) return false;
   const s = summary.toLowerCase();
   return /exit clause|termination for convenience|break option|early termination|terminate without cause|cancellation right|right to cancel/.test(

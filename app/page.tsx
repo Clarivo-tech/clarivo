@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
+import { ClarivoLanding } from "@/components/landing/clarivo-landing";
 import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -11,5 +14,5 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  redirect("/login");
+  return <ClarivoLanding />;
 }

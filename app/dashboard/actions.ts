@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCurrencyCode } from "@/lib/currency/currencies";
+import { upsertBaseCurrency } from "@/lib/data/user-preferences";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
+import type { ContractData } from "@/lib/types/contracts";
 
 export async function updateDisplayName(
   displayName: string
@@ -32,6 +35,90 @@ export async function updateDisplayName(
 
   revalidatePath("/dashboard/settings");
   return { success: true };
+}
+
+export async function updateBaseCurrency(
+  baseCurrency: string
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const currency = normalizeCurrencyCode(baseCurrency);
+  const result = await upsertBaseCurrency(supabase, user.id, currency);
+
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function updateContractValue(
+  contractDataId: string,
+  contractValue: number,
+  currency: string
+): Promise<{ error?: string; contractData?: ContractData }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  if (!Number.isFinite(contractValue) || contractValue < 0) {
+    return { error: "Enter a valid contract value." };
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("contract_data")
+    .select("id, contract_id")
+    .eq("id", contractDataId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { error: "Contract data not found." };
+  }
+
+  const { data: ownedContract, error: contractError } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("id", existing.contract_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (contractError || !ownedContract) {
+    return { error: "You do not have permission to update this contract." };
+  }
+
+  const normalizedCurrency = normalizeCurrencyCode(currency);
+
+  const { data, error } = await supabase
+    .from("contract_data")
+    .update({
+      contract_value: contractValue,
+      currency: normalizedCurrency,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", contractDataId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  return { contractData: data as ContractData };
 }
 
 export async function signOut() {

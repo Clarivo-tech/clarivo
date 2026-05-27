@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FileStack, Upload } from "lucide-react";
+import { isMissingContractValue } from "@/lib/currency/currencies";
 import type { ContractData } from "@/lib/types/contracts";
-import { formatContractValue, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { useCurrency } from "@/components/providers/currency-provider";
+import { useDashboardData } from "@/components/dashboard/dashboard-data-provider";
 import { ContractDetailPanel } from "@/components/dashboard/contract-detail-panel";
 import { ContractStatusBadge } from "@/components/dashboard/contract-status-badge";
+import { DashboardToast } from "@/components/dashboard/dashboard-toast";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { HealthScoreBadge } from "@/components/dashboard/health-score-badge";
 import { Button } from "@/components/ui/button";
@@ -19,21 +23,48 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export function DashboardContractsSection({
-  contractData,
-}: {
-  contractData: ContractData[];
-}) {
+export function DashboardContractsSection() {
+  const { contractData, registerOpenContractPanel } = useDashboardData();
+  const { formatContractValue } = useCurrency();
   const [selected, setSelected] = useState<ContractData | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editValueOnOpen, setEditValueOnOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
-  function openContract(row: ContractData) {
-    setSelected(row);
-    setPanelOpen(true);
+  useEffect(() => {
+    if (!selected) return;
+    const updated = contractData.find((row) => row.id === selected.id);
+    if (updated) setSelected(updated);
+  }, [contractData, selected]);
+
+  const openContract = useCallback(
+    (row: ContractData, options?: { editValue?: boolean }) => {
+      setSelected(row);
+      setEditValueOnOpen(options?.editValue ?? false);
+      setPanelOpen(true);
+    },
+    []
+  );
+
+  useEffect(() => {
+    registerOpenContractPanel(openContract);
+    return () => registerOpenContractPanel(null);
+  }, [openContract, registerOpenContractPanel]);
+
+  function handleAddValueClick(
+    e: React.MouseEvent,
+    row: ContractData
+  ) {
+    e.stopPropagation();
+    openContract(row, { editValue: true });
   }
 
   return (
     <>
+      {toast ? (
+        <DashboardToast message={toast} onDismiss={() => setToast(null)} />
+      ) : null}
+
       <section className="lg:col-span-2">
         <div className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
           <div className="border-b border-zinc-100 px-6 py-5">
@@ -89,44 +120,77 @@ export function DashboardContractsSection({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contractData.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        onClick={() => openContract(row)}
-                        className="cursor-pointer border-zinc-100 text-[13px] transition-colors hover:bg-orange-50/40"
-                      >
-                        <TableCell className="py-3.5 font-medium text-zinc-900">
-                          {row.vendor_name ?? "—"}
-                        </TableCell>
-                        <TableCell className="py-3.5 tabular-nums text-zinc-700">
-                          {formatContractValue(
-                            row.contract_value,
-                            row.currency
-                          )}
-                        </TableCell>
-                        <TableCell className="py-3.5 text-zinc-600">
-                          {formatDate(row.start_date)}
-                        </TableCell>
-                        <TableCell className="py-3.5 text-zinc-600">
-                          {formatDate(row.end_date)}
-                        </TableCell>
-                        <TableCell className="py-3.5 text-zinc-600">
-                          {formatDate(row.renewal_date)}
-                        </TableCell>
-                        <TableCell className="py-3.5 text-zinc-600">
-                          {row.contract_type ?? "—"}
-                        </TableCell>
-                        <TableCell
-                          className="py-3.5"
-                          onClick={(e) => e.stopPropagation()}
+                    {contractData.map((row) => {
+                      const missingValue = isMissingContractValue(
+                        row.contract_value
+                      );
+                      const value = formatContractValue(
+                        row.contract_value,
+                        row.currency
+                      );
+
+                      return (
+                        <TableRow
+                          key={row.id}
+                          onClick={() => openContract(row)}
+                          className="cursor-pointer border-zinc-100 text-[13px] transition-colors hover:bg-orange-50/40"
                         >
-                          <HealthScoreBadge row={row} />
-                        </TableCell>
-                        <TableCell className="py-3.5">
-                          <ContractStatusBadge status={row.status} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          <TableCell className="py-3.5 font-medium text-zinc-900">
+                            {row.vendor_name ?? "—"}
+                          </TableCell>
+                          <TableCell
+                            className="py-3.5 tabular-nums"
+                            onClick={(e) => {
+                              if (missingValue) {
+                                handleAddValueClick(e, row);
+                              }
+                            }}
+                          >
+                            {missingValue ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleAddValueClick(e, row)}
+                                className="text-sm font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+                              >
+                                Add value
+                              </button>
+                            ) : (
+                              <>
+                                <span className="text-zinc-700">
+                                  {value.display}
+                                </span>
+                                {value.originalNote ? (
+                                  <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+                                    {value.originalNote}
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.start_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.end_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {formatDate(row.renewal_date)}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {row.contract_type ?? "—"}
+                          </TableCell>
+                          <TableCell
+                            className="py-3.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <HealthScoreBadge row={row} />
+                          </TableCell>
+                          <TableCell className="py-3.5">
+                            <ContractStatusBadge status={row.status} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -139,6 +203,11 @@ export function DashboardContractsSection({
         contract={selected}
         open={panelOpen}
         onOpenChange={setPanelOpen}
+        editValueOnOpen={editValueOnOpen}
+        onSaved={(message) => {
+          setToast(message);
+          window.setTimeout(() => setToast(null), 5000);
+        }}
       />
     </>
   );

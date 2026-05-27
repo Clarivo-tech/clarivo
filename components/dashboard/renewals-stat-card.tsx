@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarClock, ChevronDown } from "lucide-react";
 import type { RenewalListItem } from "@/lib/contracts/renewals-in-range";
+import { useCurrency } from "@/components/providers/currency-provider";
 import { cn } from "@/lib/utils";
 
 const urgencyDateStyles = {
@@ -18,6 +19,7 @@ export function RenewalsStatCard({
   count: number;
   renewals: RenewalListItem[];
 }) {
+  const { formatContractValue } = useCurrency();
   const [expanded, setExpanded] = useState(false);
   const canExpand = count > 0;
 
@@ -74,29 +76,40 @@ export function RenewalsStatCard({
           className="mt-2 overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
         >
           <ul className="divide-y divide-zinc-100">
-            {renewals.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-zinc-900">
-                    {item.vendorName}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    {item.daysUntilLabel}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:text-right">
-                  <span className={urgencyDateStyles[item.urgency]}>
-                    {item.renewalDateLabel}
-                  </span>
-                  <span className="tabular-nums font-medium text-zinc-700">
-                    {item.valueLabel}
-                  </span>
-                </div>
-              </li>
-            ))}
+            {renewals.map((item) => {
+              const value = formatContractValue(
+                item.contractValue,
+                item.currency
+              );
+              return (
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-zinc-900">
+                      {item.vendorName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {item.daysUntilLabel}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:text-right">
+                    <span className={urgencyDateStyles[item.urgency]}>
+                      {item.renewalDateLabel}
+                    </span>
+                    <span className="tabular-nums font-medium text-zinc-700">
+                      {value.display}
+                      {value.originalNote ? (
+                        <span className="ml-1 text-xs font-normal text-zinc-500">
+                          {value.originalNote}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

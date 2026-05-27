@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 export function StatCard({
   title,
   value,
+  footnote,
   icon: Icon,
   iconColor,
   iconBgClassName,
@@ -11,6 +12,7 @@ export function StatCard({
 }: {
   title: string;
   value: string;
+  footnote?: string;
   icon: LucideIcon;
   iconColor: string;
   iconBgClassName: string;
@@ -37,6 +39,9 @@ export function StatCard({
       <p className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 tabular-nums">
         {value}
       </p>
+      {footnote ? (
+        <p className="mt-1.5 text-xs text-zinc-500">{footnote}</p>
+      ) : null}
     </div>
   );
 }

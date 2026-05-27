@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Loader2, Sparkles } from "lucide-react";
-import { updateDisplayName } from "@/app/dashboard/actions";
+import { updateBaseCurrency, updateDisplayName } from "@/app/dashboard/actions";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencies";
+import type { SupportedCurrency } from "@/lib/currency/currencies";
 import { formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,15 +103,21 @@ const cardClassName =
 export function SettingsPageClient({
   email,
   initialDisplayName,
+  initialBaseCurrency,
   memberSince,
 }: {
   email: string;
   initialDisplayName: string;
+  initialBaseCurrency: SupportedCurrency;
   memberSince: string;
 }) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [baseCurrency, setBaseCurrency] =
+    useState<SupportedCurrency>(initialBaseCurrency);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const [profilePending, startProfileTransition] = useTransition();
+  const [preferencesPending, startPreferencesTransition] = useTransition();
 
   const [renewalEmailAlerts, setRenewalEmailAlerts] = useState(true);
   const [reminder90, setReminder90] = useState(true);
@@ -135,6 +143,18 @@ export function SettingsPageClient({
         return;
       }
       showToast("Profile updated successfully.");
+    });
+  }
+
+  function handleSaveDisplayPreferences() {
+    setPreferencesError(null);
+    startPreferencesTransition(async () => {
+      const result = await updateBaseCurrency(baseCurrency);
+      if (result.error) {
+        setPreferencesError(result.error);
+        return;
+      }
+      showToast("Display preferences saved.");
     });
   }
 
@@ -233,6 +253,66 @@ export function SettingsPageClient({
               className="bg-[#F97316] text-white hover:bg-[#EA580C]"
             >
               {profilePending ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className={cardClassName}>
+          <CardHeader className="border-b border-zinc-100">
+            <CardTitle>Display Preferences</CardTitle>
+            <CardDescription>
+              Choose how monetary values are shown across your dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label
+                htmlFor="base-currency"
+                className="text-sm font-medium text-zinc-700"
+              >
+                Base Currency
+              </label>
+              <select
+                id="base-currency"
+                value={baseCurrency}
+                onChange={(e) =>
+                  setBaseCurrency(e.target.value as SupportedCurrency)
+                }
+                disabled={preferencesPending}
+                className="h-10 w-full rounded-lg border border-input bg-white px-2.5 text-sm text-zinc-900 outline-none focus-visible:border-[#F97316] focus-visible:ring-3 focus-visible:ring-[#F97316]/30 disabled:opacity-50"
+              >
+                {SUPPORTED_CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-zinc-500">
+                Contract values are converted to this currency using live
+                exchange rates.
+              </p>
+            </div>
+            {preferencesError ? (
+              <p className="text-sm text-red-600" role="alert">
+                {preferencesError}
+              </p>
+            ) : null}
+          </CardContent>
+          <CardFooter className="border-t border-zinc-100 bg-transparent">
+            <Button
+              type="button"
+              onClick={handleSaveDisplayPreferences}
+              disabled={preferencesPending}
+              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+            >
+              {preferencesPending ? (
                 <>
                   <Loader2 className="animate-spin" />
                   Saving…

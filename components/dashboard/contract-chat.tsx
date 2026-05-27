@@ -118,7 +118,9 @@ export function ContractChat({
   return (
     <section
       className={cn(
-        "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+        compact
+          ? "rounded-xl border border-zinc-800 bg-[#0a0a0a] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+          : "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
         compact && !expanded && "flex min-h-[220px] flex-col",
         compact && expanded && "col-span-full",
         className
@@ -126,15 +128,17 @@ export function ContractChat({
     >
       <div
         className={cn(
-          "flex items-center justify-between gap-2 border-b border-zinc-100",
-          compact ? "px-4 py-3" : "px-6 py-5"
+          "flex items-center justify-between gap-2 border-b",
+          compact
+            ? "border-zinc-800 px-4 py-3"
+            : "border-zinc-100 px-6 py-5"
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
           <div
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10",
-              compact ? "size-8" : "size-9"
+              "flex shrink-0 items-center justify-center rounded-lg",
+              compact ? "size-8 bg-[#F97316]/20" : "size-9 bg-[#F97316]/10"
             )}
           >
             <MessageSquare className="size-4 text-[#F97316]" />
@@ -142,13 +146,17 @@ export function ContractChat({
           <div className="min-w-0">
             <h2
               className={cn(
-                "font-semibold text-zinc-900",
-                compact ? "text-sm" : "text-base"
+                "font-semibold",
+                compact ? "text-sm text-white" : "text-base text-zinc-900"
               )}
             >
               Ask Clarivo AI
             </h2>
-            {!compact && (
+            {compact ? (
+              <p className="mt-0.5 text-sm text-zinc-300">
+                Ask about your contracts — value, renewals, vendors, and dates.
+              </p>
+            ) : (
               <p className="mt-0.5 text-sm text-zinc-500">
                 Natural language answers from your uploaded contract data only.
               </p>
@@ -161,7 +169,7 @@ export function ContractChat({
             variant="ghost"
             size="sm"
             onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 text-xs text-[#F97316] hover:bg-orange-50 hover:text-[#EA580C]"
+            className="shrink-0 text-xs text-[#F97316] hover:bg-white/10 hover:text-[#FB923C]"
           >
             {expanded ? (
               <>
@@ -187,14 +195,17 @@ export function ContractChat({
         <div
           ref={scrollRef}
           className={cn(
-            "flex flex-col gap-2 overflow-y-auto rounded-lg bg-zinc-50/80",
-            isCompactView
-              ? "min-h-[176px] flex-1 max-h-[176px] px-3 py-2.5"
+            "flex flex-col gap-2 overflow-y-auto rounded-lg",
+            compact ? "bg-black" : "bg-zinc-50/80",
+            compact
+              ? isCompactView
+                ? "min-h-[176px] flex-1 max-h-[176px] px-3 py-2.5"
+                : "max-h-[min(70vh,32rem)] min-h-56 flex-1 px-3 py-2.5"
               : "max-h-96 min-h-56 gap-4 px-4 py-5"
           )}
         >
           {visibleMessages.length === 0 && isCompactView && (
-            <p className="text-[11px] leading-snug text-zinc-500">
+            <p className="text-[11px] leading-snug text-zinc-400">
               {WELCOME_MESSAGE.content}
             </p>
           )}
@@ -214,7 +225,9 @@ export function ContractChat({
                     : "max-w-[88%] px-4 py-3 text-[13px]",
                   msg.role === "user"
                     ? "rounded-xl rounded-br-sm bg-[#F97316] text-white"
-                    : "rounded-xl rounded-bl-sm border border-zinc-200/80 bg-white text-zinc-700"
+                    : compact
+                      ? "rounded-xl rounded-bl-sm bg-white text-[#111827]"
+                      : "rounded-xl rounded-bl-sm border border-zinc-200/80 bg-white text-zinc-700"
                 )}
               >
                 <p
@@ -233,8 +246,15 @@ export function ContractChat({
             <div className="flex justify-start">
               <div
                 className={cn(
-                  "flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white text-zinc-500",
-                  isCompactView ? "px-2 py-1 text-[10px]" : "px-4 py-3 text-[13px]"
+                  "flex items-center gap-1.5 rounded-xl",
+                  compact
+                    ? "bg-white px-2 py-1 text-[10px] text-[#111827]"
+                    : cn(
+                        "border border-zinc-200/80 bg-white text-zinc-500",
+                        isCompactView
+                          ? "px-2 py-1 text-[10px]"
+                          : "px-4 py-3 text-[13px]"
+                      )
                 )}
               >
                 <Loader2 className="size-3 animate-spin text-[#F97316]" />
@@ -246,7 +266,9 @@ export function ContractChat({
 
         {error && (
           <p
-            className={cn("text-red-600", compact ? "text-[11px]" : "text-sm")}
+            className={cn(
+              compact ? "text-[11px] text-red-400" : "text-sm text-red-600"
+            )}
             role="alert"
           >
             {error}
@@ -255,8 +277,10 @@ export function ContractChat({
 
         <div
           className={cn(
-            "flex items-center gap-2 rounded-lg border border-zinc-200/80 bg-white focus-within:border-[#F97316]/40 focus-within:ring-2 focus-within:ring-[#F97316]/15",
-            compact ? "p-1.5" : "gap-3 p-2"
+            "flex items-center gap-2 rounded-lg",
+            compact
+              ? "border border-zinc-800 bg-[#1a1a1a] p-1.5 focus-within:border-[#F97316]/50 focus-within:ring-2 focus-within:ring-[#F97316]/20"
+              : "gap-3 border border-zinc-200/80 bg-white p-2 focus-within:border-[#F97316]/40 focus-within:ring-2 focus-within:ring-[#F97316]/15"
           )}
         >
           {compact ? (
@@ -267,7 +291,7 @@ export function ContractChat({
               placeholder="Ask about your contracts…"
               disabled={loading}
               rows={2}
-              className="min-h-[52px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none disabled:opacity-50"
+              className="min-h-[52px] flex-1 resize-none rounded-md border-0 bg-white px-2 py-2 text-xs text-[#111827] placeholder:text-[#6b7280] focus:outline-none disabled:opacity-50"
             />
           ) : (
             <textarea

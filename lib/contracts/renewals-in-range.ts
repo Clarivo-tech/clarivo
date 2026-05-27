@@ -6,7 +6,6 @@ import {
   startOfToday,
 } from "date-fns";
 import { dedupeContractDataByContractId } from "@/lib/contracts/dedupe-contract-data";
-import { formatContractValue } from "@/lib/format";
 import type { ContractData } from "@/lib/types/contracts";
 
 export type RenewalUrgency = "urgent" | "soon" | "later";
@@ -17,7 +16,8 @@ export type RenewalListItem = {
   renewalDateLabel: string;
   daysUntil: number;
   daysUntilLabel: string;
-  valueLabel: string;
+  contractValue: number | null;
+  currency: string | null;
   urgency: RenewalUrgency;
 };
 
@@ -62,10 +62,8 @@ export function getRenewalsInNext12Months(
         renewalDateLabel: format(renewal, "MMM d, yyyy"),
         daysUntil,
         daysUntilLabel: formatDaysUntil(daysUntil),
-        valueLabel: formatContractValue(
-          row.contract_value,
-          row.currency
-        ),
+        contractValue: row.contract_value,
+        currency: row.currency,
         urgency: getUrgency(daysUntil),
       };
     });
