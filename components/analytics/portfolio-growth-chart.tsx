@@ -29,9 +29,9 @@ function GrowthTooltip({
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
-      <p className="text-xs text-zinc-400">{point.label}</p>
-      <p className="mt-1 text-sm font-bold tabular-nums text-[#F97316]">
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-lg">
+      <p className="text-xs text-zinc-500">{point.label}</p>
+      <p className="mt-1 text-sm font-bold tabular-nums text-zinc-900">
         {formatCurrency(point.value, baseCurrency)}
       </p>
     </div>
@@ -85,17 +85,19 @@ export function PortfolioGrowthChart({
             <defs>
               <linearGradient id="portfolioLine" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#F97316" />
-                <stop offset="100%" stopColor="#FB923C" />
+                <stop offset="35%" stopColor="#38BDF8" />
+                <stop offset="70%" stopColor="#A855F7" />
+                <stop offset="100%" stopColor="#22C55E" />
               </linearGradient>
               <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#F97316" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#F97316" stopOpacity={0} />
+                <stop offset="0%" stopColor="#38BDF8" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="#38BDF8" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#1f2937" strokeDasharray="3 6" vertical={false} />
+            <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 6" vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fill: "#9ca3af", fontSize: 11 }}
+              tick={{ fill: "#52525b", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
             />
@@ -113,10 +115,10 @@ export function PortfolioGrowthChart({
               stroke="url(#portfolioLine)"
               strokeWidth={2.5}
               fill="url(#portfolioFill)"
-              dot={{ fill: "#F97316", r: 3, strokeWidth: 0 }}
+              dot={{ fill: "#38BDF8", r: 3, strokeWidth: 0 }}
               activeDot={{
                 r: 5,
-                fill: "#F97316",
+                fill: "#A855F7",
                 stroke: "#fff",
                 strokeWidth: 2,
               }}

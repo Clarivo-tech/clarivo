@@ -213,6 +213,7 @@ function buildCompletedContract(
     file_name: fields.file_name,
     file_url: fields.file_url,
     storage_path: fields.storage_path,
+    is_active: true,
     status: "complete",
     uploaded_at: fields.uploaded_at ?? now,
     created_at: fields.uploaded_at ?? now,
@@ -363,6 +364,7 @@ export async function POST(request: Request) {
       file_name: fileName,
       file_url: fileUrl,
       storage_path: storagePath,
+      is_active: true,
       status: "processing",
     });
 

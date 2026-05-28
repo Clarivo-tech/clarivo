@@ -15,7 +15,16 @@ import { AnalyticsChartCard } from "@/components/analytics/analytics-chart-card"
 import { computeTypeBreakdown } from "@/lib/analytics/compute-analytics";
 import type { ContractData } from "@/lib/types/contracts";
 
-const BAR_COLOR = "#F97316";
+const BRIGHT_COLORS = [
+  "#F97316",
+  "#38BDF8",
+  "#A855F7",
+  "#22C55E",
+  "#EF4444",
+  "#EAB308",
+  "#06B6D4",
+  "#EC4899",
+];
 
 function TypeTooltip({
   active,
@@ -27,9 +36,9 @@ function TypeTooltip({
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
-      <p className="text-xs text-zinc-400">{point.type}</p>
-      <p className="mt-1 text-sm font-bold text-[#F97316]">
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-lg">
+      <p className="text-xs text-zinc-500">{point.type}</p>
+      <p className="mt-1 text-sm font-bold text-zinc-900">
         {point.count} contract{point.count === 1 ? "" : "s"}
       </p>
     </div>
@@ -67,7 +76,7 @@ export function ContractsByTypeChart({
             layout="vertical"
             margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
           >
-            <CartesianGrid stroke="#1f2937" horizontal={false} />
+            <CartesianGrid stroke="#e5e7eb" horizontal={false} />
             <XAxis
               type="number"
               allowDecimals={false}
@@ -79,14 +88,17 @@ export function ContractsByTypeChart({
               type="category"
               dataKey="type"
               width={120}
-              tick={{ fill: "#9ca3af", fontSize: 11 }}
+              tick={{ fill: "#52525b", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip content={<TypeTooltip />} cursor={{ fill: "#1f2937" }} />
+            <Tooltip content={<TypeTooltip />} cursor={{ fill: "#f4f4f5" }} />
             <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={18}>
-              {data.map((entry) => (
-                <Cell key={entry.type} fill={BAR_COLOR} />
+              {data.map((entry, index) => (
+                <Cell
+                  key={entry.type}
+                  fill={BRIGHT_COLORS[index % BRIGHT_COLORS.length]}
+                />
               ))}
             </Bar>
           </BarChart>

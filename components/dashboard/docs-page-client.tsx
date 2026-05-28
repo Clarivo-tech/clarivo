@@ -19,6 +19,7 @@ function applyUploadSuccess(
         user_id: "",
         file_name: "Contract",
         file_url: "",
+        is_active: true,
         status: "complete",
         uploaded_at: new Date().toISOString(),
         created_at: new Date().toISOString(),

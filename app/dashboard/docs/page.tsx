@@ -12,7 +12,9 @@ export default async function DocsPage() {
 
   if (!user) return null;
 
-  const contracts = await getContracts(supabase, user.id);
+  const contracts = await getContracts(supabase, user.id, {
+    includeInactive: true,
+  });
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">

@@ -9,13 +9,20 @@ import type {
 
 export async function getContracts(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  options?: { includeInactive?: boolean }
 ): Promise<Contract[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("contracts")
     .select("*")
     .eq("user_id", userId)
     .order("uploaded_at", { ascending: false });
+
+  if (!options?.includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("[dashboard] getContracts:", error.message);
@@ -97,7 +104,11 @@ export function getRenewalAlerts(
   contractData: ContractData[]
 ): ContractData[] {
   return contractData
-    .filter((row) => isRenewalWithinDays(row.renewal_date, 30))
+    .filter(
+      (row) =>
+        isRenewalWithinDays(row.renewal_date, 30) &&
+        !row.renewal_alert_dismissed
+    )
     .sort((a, b) => {
       if (!a.renewal_date || !b.renewal_date) return 0;
       return (

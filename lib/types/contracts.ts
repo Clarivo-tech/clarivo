@@ -18,6 +18,7 @@ export type Contract = {
   file_name: string;
   file_url: string;
   storage_path?: string | null;
+  is_active: boolean;
   status: ContractFileStatus;
   uploaded_at: string;
   created_at: string;
@@ -39,6 +40,7 @@ export type ContractData = {
   contract_type: string | null;
   summary: string | null;
   status: ContractDataStatus;
+  renewal_alert_dismissed: boolean | null;
   created_at: string;
   updated_at: string;
 };

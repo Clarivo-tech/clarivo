@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { AlertTriangle, CalendarClock } from "lucide-react";
 import { isMissingContractValue } from "@/lib/currency/currencies";
 import { dedupeContractDataByContractId } from "@/lib/contracts/dedupe-contract-data";
@@ -11,10 +11,14 @@ import { useDashboardData } from "@/components/dashboard/dashboard-data-provider
 import { DashboardContractsSection } from "@/components/dashboard/dashboard-contracts-section";
 import { NoticePeriodTracker } from "@/components/dashboard/notice-period-tracker";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { Button } from "@/components/ui/button";
+import { dismissRenewalAlert } from "@/app/dashboard/actions";
 
 export function DashboardOverview() {
-  const { contractData } = useDashboardData();
+  const { contractData, updateContractRow } = useDashboardData();
   const { formatContractValue } = useCurrency();
+  const [isDismissPending, startDismissTransition] = useTransition();
+  const [dismissPendingId, setDismissPendingId] = useState<string | null>(null);
 
   const rows = useMemo(
     () => dedupeContractDataByContractId(contractData),
@@ -64,9 +68,37 @@ export function DashboardOverview() {
                       key={row.id}
                       className="rounded-lg border border-zinc-100 bg-zinc-50/80 p-4 transition-colors hover:border-orange-200/60 hover:bg-orange-50/30"
                     >
-                      <p className="text-sm font-medium text-zinc-900">
-                        {row.vendor_name ?? "Unknown vendor"}
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium text-zinc-900">
+                          {row.vendor_name ?? "Unknown vendor"}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isDismissPending && dismissPendingId === row.id}
+                          onClick={() =>
+                            startDismissTransition(async () => {
+                              setDismissPendingId(row.id);
+                              const result = await dismissRenewalAlert(row.id);
+                              if (result.error) {
+                                alert(result.error);
+                                setDismissPendingId(null);
+                                return;
+                              }
+                              if (result.contractData) {
+                                updateContractRow(result.contractData);
+                              }
+                              setDismissPendingId(null);
+                            })
+                          }
+                          className="h-7 border-zinc-200 bg-white px-2.5 text-xs text-zinc-700 hover:bg-zinc-50"
+                        >
+                          {isDismissPending && dismissPendingId === row.id
+                            ? "..."
+                            : "Dismiss"}
+                        </Button>
+                      </div>
                       <p className="mt-1 text-[13px] text-zinc-600">
                         Renews {formatDate(row.renewal_date)}
                       </p>

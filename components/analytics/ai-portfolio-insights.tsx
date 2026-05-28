@@ -58,7 +58,7 @@ export function AiPortfolioInsights({
     <section className="overflow-hidden rounded-xl border border-zinc-800 bg-[#111827] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
       <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-[#F97316]/20">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-[#F97316]/10">
             <Sparkles className="size-4 text-[#F97316]" />
           </div>
           <div>

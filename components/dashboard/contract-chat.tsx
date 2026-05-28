@@ -119,7 +119,7 @@ export function ContractChat({
     <section
       className={cn(
         compact
-          ? "rounded-xl border border-zinc-800 bg-[#0a0a0a] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+          ? "rounded-xl border border-white/[0.08] bg-[#111827] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
           : "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
         compact && !expanded && "flex min-h-[220px] flex-col",
         compact && expanded && "col-span-full",
@@ -196,7 +196,7 @@ export function ContractChat({
           ref={scrollRef}
           className={cn(
             "flex flex-col gap-2 overflow-y-auto rounded-lg",
-            compact ? "bg-black" : "bg-zinc-50/80",
+            compact ? "bg-[#111827]" : "bg-zinc-50/80",
             compact
               ? isCompactView
                 ? "min-h-[176px] flex-1 max-h-[176px] px-3 py-2.5"
@@ -279,7 +279,7 @@ export function ContractChat({
           className={cn(
             "flex items-center gap-2 rounded-lg",
             compact
-              ? "border border-zinc-800 bg-[#1a1a1a] p-1.5 focus-within:border-[#F97316]/50 focus-within:ring-2 focus-within:ring-[#F97316]/20"
+              ? "border border-zinc-800 bg-[#111827] p-1.5 focus-within:border-[#F97316]/50 focus-within:ring-2 focus-within:ring-[#F97316]/20"
               : "gap-3 border border-zinc-200/80 bg-white p-2 focus-within:border-[#F97316]/40 focus-within:ring-2 focus-within:ring-[#F97316]/15"
           )}
         >

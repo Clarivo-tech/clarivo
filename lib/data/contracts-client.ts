@@ -43,7 +43,8 @@ export async function fetchContractDataForCurrentUser(): Promise<
   const { data: contracts, error: contractsError } = await supabase
     .from("contracts")
     .select("id")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("is_active", true);
 
   if (contractsError) {
     console.error("[chat] fetch contract ids failed:", contractsError.message);

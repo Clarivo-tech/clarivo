@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -18,25 +19,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -46,6 +44,15 @@ export default function SignupPage() {
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          company: company.trim(),
+          job_title: jobTitle.trim(),
+          contact_number: contactNumber.trim(),
+        },
+      },
     });
 
     if (authError) {
@@ -54,41 +61,95 @@ export default function SignupPage() {
       return;
     }
 
-    if (data.session) {
-      router.push("/dashboard");
-      router.refresh();
+    const userId = data.user?.id;
+    if (!userId) {
+      setError("Signup succeeded, but no user was returned.");
+      setLoading(false);
       return;
     }
 
-    setSuccess(
-      "Check your email for a confirmation link, then sign in to continue."
+    const now = new Date();
+    const trialExpiresAt = new Date(now);
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + 5);
+
+    const { error: prefError } = await supabase.from("user_preferences").upsert(
+      {
+        user_id: userId,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        company: company.trim(),
+        job_title: jobTitle.trim(),
+        contact_number: contactNumber.trim(),
+        trial_started_at: now.toISOString(),
+        trial_expires_at: trialExpiresAt.toISOString(),
+        subscription_status: "trial",
+        updated_at: now.toISOString(),
+      },
+      { onConflict: "user_id" }
     );
-    setLoading(false);
+
+    if (prefError) {
+      setError(prefError.message);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const emailResponse = await fetch("/api/email/signup-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          company: company.trim(),
+          jobTitle: jobTitle.trim(),
+          trialExpiresAt: trialExpiresAt.toISOString(),
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const payload = (await emailResponse.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        console.error(
+          "[signup] welcome/founder email failed:",
+          emailResponse.status,
+          payload.error ?? emailResponse.statusText
+        );
+      }
+    } catch (emailError) {
+      console.error("[signup] welcome/founder email failed:", emailError);
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50/40 px-4 py-12">
-      <div className="mb-8 flex flex-col items-center gap-3">
-        <img
+    <div className="relative min-h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50/40 px-4 py-12">
+      <Link
+        href="/"
+        className="absolute left-6 top-6 flex items-center gap-2.5"
+        aria-label="Back to Clarivo homepage"
+      >
+        <Image
           src="/clarivo-logo.png"
-          alt="Clarivo"
-          width={36}
-          height={36}
-          style={{ borderRadius: "8px" }}
+          alt=""
+          width={32}
+          height={32}
+          className="rounded-lg"
         />
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            Clarivo
-          </h1>
-          <p className="text-sm text-zinc-500">Contract intelligence</p>
-        </div>
-      </div>
+        <span className="text-lg font-semibold tracking-tight text-zinc-900">
+          Clarivo
+        </span>
+      </Link>
 
       <Card className="w-full max-w-md border-orange-100/80 shadow-xl shadow-orange-500/5">
         <CardHeader>
           <CardTitle>Create your account</CardTitle>
           <CardDescription>
-            Start tracking contracts, spend, and renewal alerts.
+            Start your 5-day free trial.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,11 +159,45 @@ export default function SignupPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            {success && (
-              <Alert className="border-orange-200 bg-orange-50 text-orange-900">
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="firstName"
+                  className="text-sm font-medium text-zinc-700"
+                >
+                  First name
+                </label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="lastName"
+                  className="text-sm font-medium text-zinc-700"
+                >
+                  Last name
+                </label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Smith"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
+                />
+              </div>
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="email" className="text-sm font-medium text-zinc-700">
@@ -123,6 +218,63 @@ export default function SignupPage() {
 
             <div className="flex flex-col gap-1.5">
               <label
+                htmlFor="company"
+                className="text-sm font-medium text-zinc-700"
+              >
+                Company
+              </label>
+              <Input
+                id="company"
+                type="text"
+                placeholder="Acme Ltd"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                required
+                disabled={loading}
+                className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="jobTitle"
+                className="text-sm font-medium text-zinc-700"
+              >
+                Job title
+              </label>
+              <Input
+                id="jobTitle"
+                type="text"
+                placeholder="Head of Procurement"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                required
+                disabled={loading}
+                className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="contactNumber"
+                className="text-sm font-medium text-zinc-700"
+              >
+                Contact number
+              </label>
+              <Input
+                id="contactNumber"
+                type="tel"
+                placeholder="+44 7123 456789"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                required
+                disabled={loading}
+                className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
                 htmlFor="password"
                 className="text-sm font-medium text-zinc-700"
               >
@@ -131,32 +283,11 @@ export default function SignupPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
-                autoComplete="new-password"
-                disabled={loading}
-                className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="confirmPassword"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Confirm password
-              </label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
+                minLength={8}
                 autoComplete="new-password"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
@@ -171,10 +302,10 @@ export default function SignupPage() {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Creating account…
+                  Starting trial…
                 </>
               ) : (
-                "Create account"
+                "Start free trial"
               )}
             </Button>
           </form>

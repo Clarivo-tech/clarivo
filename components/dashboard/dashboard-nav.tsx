@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, FileText, LayoutDashboard, Settings } from "lucide-react";
+import { BarChart2, Bell, FileText, LayoutDashboard, Settings } from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -14,13 +14,19 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/docs", label: "Documents", icon: FileText, exact: false },
   {
     href: "/dashboard/analytics",
     label: "Analytics",
     icon: BarChart2,
     exact: false,
   },
-  { href: "/dashboard/docs", label: "Contracts", icon: FileText, exact: false },
+  {
+    href: "/dashboard/alerts",
+    label: "Alerts & Reminders",
+    icon: Bell,
+    exact: false,
+  },
   {
     href: "/dashboard/settings",
     label: "Settings",

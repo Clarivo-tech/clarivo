@@ -14,12 +14,12 @@ export function AnalyticsChartCard({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-zinc-800 bg-[#111827] shadow-[0_4px_24px_rgba(0,0,0,0.2)]",
+        "overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
         className
       )}
     >
-      <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
+      <div className="border-b border-zinc-100 px-4 py-3">
+        <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
         {subtitle ? (
           <p className="mt-0.5 text-[11px] text-zinc-500">{subtitle}</p>
         ) : null}
