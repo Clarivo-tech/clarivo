@@ -6,17 +6,25 @@ import type {
   ContractData,
   DashboardStats,
 } from "@/lib/types/contracts";
+import { getOrganisationId } from "@/lib/team/org";
 
 export async function getContracts(
   supabase: SupabaseClient,
   userId: string,
   options?: { includeInactive?: boolean }
 ): Promise<Contract[]> {
+  const organisationId = await getOrganisationId(supabase, userId);
+
   let query = supabase
     .from("contracts")
     .select("*")
-    .eq("user_id", userId)
     .order("uploaded_at", { ascending: false });
+
+  if (organisationId) {
+    query = query.eq("organisation_id", organisationId);
+  } else {
+    query = query.eq("user_id", userId);
+  }
 
   if (!options?.includeInactive) {
     query = query.eq("is_active", true);

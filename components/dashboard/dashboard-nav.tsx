@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Bell, FileText, LayoutDashboard, Settings } from "lucide-react";
+import {
+  BarChart2,
+  Bell,
+  FileText,
+  LayoutDashboard,
+  Settings,
+  Users,
+} from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -19,6 +26,12 @@ const navItems = [
     href: "/dashboard/analytics",
     label: "Analytics",
     icon: BarChart2,
+    exact: false,
+  },
+  {
+    href: "/dashboard/team",
+    label: "My Team",
+    icon: Users,
     exact: false,
   },
   {

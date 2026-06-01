@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { dedupeContractDataByContractId } from "@/lib/data/dedupe-contract-data";
+import { getOrganisationId } from "@/lib/team/org";
 import type { Contract, ContractData } from "@/lib/types/contracts";
 
 export async function fetchContractsForCurrentUser(): Promise<Contract[]> {
@@ -13,11 +14,20 @@ export async function fetchContractsForCurrentUser(): Promise<Contract[]> {
     return [];
   }
 
-  const { data, error } = await supabase
+  const organisationId = await getOrganisationId(supabase, user.id);
+
+  let query = supabase
     .from("contracts")
     .select("*")
-    .eq("user_id", user.id)
     .order("uploaded_at", { ascending: false });
+
+  if (organisationId) {
+    query = query.eq("organisation_id", organisationId);
+  } else {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("[docs] fetch contracts failed:", error.message);
@@ -40,11 +50,20 @@ export async function fetchContractDataForCurrentUser(): Promise<
     return [];
   }
 
-  const { data: contracts, error: contractsError } = await supabase
+  const organisationId = await getOrganisationId(supabase, user.id);
+
+  let contractsQuery = supabase
     .from("contracts")
     .select("id")
-    .eq("user_id", user.id)
     .eq("is_active", true);
+
+  if (organisationId) {
+    contractsQuery = contractsQuery.eq("organisation_id", organisationId);
+  } else {
+    contractsQuery = contractsQuery.eq("user_id", user.id);
+  }
+
+  const { data: contracts, error: contractsError } = await contractsQuery;
 
   if (contractsError) {
     console.error("[chat] fetch contract ids failed:", contractsError.message);

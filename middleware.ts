@@ -4,7 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_ROUTES = ["/", "/login", "/signup"] as const;
 
 function isPublicRoute(pathname: string): boolean {
-  return (PUBLIC_ROUTES as readonly string[]).includes(pathname);
+  if ((PUBLIC_ROUTES as readonly string[]).includes(pathname)) {
+    return true;
+  }
+  if (pathname.startsWith("/invite/")) {
+    return true;
+  }
+  return false;
 }
 
 function isProtectedRoute(pathname: string): boolean {
@@ -12,8 +18,13 @@ function isProtectedRoute(pathname: string): boolean {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/api/upload") ||
     pathname.startsWith("/api/extract") ||
-    pathname.startsWith("/api/chat")
+    pathname.startsWith("/api/chat") ||
+    pathname.startsWith("/api/invite")
   );
+}
+
+function isInviteAcceptApi(pathname: string): boolean {
+  return pathname === "/api/invite/accept";
 }
 
 function buildTrialWindow() {
@@ -57,16 +68,45 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (user && isPublicRoute(pathname)) {
+  if (user && isPublicRoute(pathname) && !pathname.startsWith("/invite/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
-  if (!user && isProtectedRoute(pathname)) {
+  if (!user && isProtectedRoute(pathname) && !isInviteAcceptApi(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  if (
+    user &&
+    (pathname.startsWith("/api/upload") ||
+      pathname.startsWith("/api/extract") ||
+      pathname.startsWith("/api/chat"))
+  ) {
+    const { data: membership } = await supabase
+      .from("organisation_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    const role = membership?.role ?? "owner";
+    const viewerBlocked =
+      role === "viewer" &&
+      (pathname.startsWith("/api/upload") ||
+        pathname.startsWith("/api/extract") ||
+        pathname.startsWith("/api/chat"));
+
+    if (viewerBlocked) {
+      return NextResponse.json(
+        { error: "Viewers have read-only access." },
+        { status: 403 }
+      );
+    }
   }
 
   if (user && pathname.startsWith("/dashboard")) {

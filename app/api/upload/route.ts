@@ -2,6 +2,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/api/auth";
+import { requireCanUpload, requireOrgRole } from "@/lib/api/require-role";
+import { getOrganisationId } from "@/lib/team/org";
+import { userCanAccessContract } from "@/lib/team/contract-access";
 import {
   callClaudeWithPdf,
   deriveDataStatus,
@@ -231,6 +234,11 @@ export async function POST(request: Request) {
   }
 
   const { supabase, user } = auth;
+
+  const roleCheck = await requireOrgRole(supabase, user, requireCanUpload);
+  if (!roleCheck.ok) return roleCheck.response;
+
+  const organisationId = await getOrganisationId(supabase, user.id);
   let contractId: string | null = null;
 
   try {
@@ -254,8 +262,17 @@ export async function POST(request: Request) {
           "id, user_id, storage_path, file_url, file_name, uploaded_at, status"
         )
         .eq("id", contractId)
-        .eq("user_id", user.id)
         .single();
+
+      const canAccess = await userCanAccessContract(
+        supabase,
+        user.id,
+        contractId,
+        { requireEdit: true }
+      );
+      if (!canAccess) {
+        return jsonError("reprocess", "Contract not found.", 404);
+      }
 
       if (loadError || !existing) {
         return jsonError("load_contract", "Contract not found.", 404);
@@ -361,6 +378,7 @@ export async function POST(request: Request) {
     const { error: dbError } = await supabase.from("contracts").insert({
       id: contractId,
       user_id: user.id,
+      organisation_id: organisationId,
       file_name: fileName,
       file_url: fileUrl,
       storage_path: storagePath,

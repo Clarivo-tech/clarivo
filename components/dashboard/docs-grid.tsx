@@ -22,12 +22,14 @@ import { useState } from "react";
 
 export function DocsGrid({
   contracts,
+  canEdit = true,
   busyIds,
   onContractDeleted,
   onDeleted,
   onRetry,
 }: {
   contracts: Contract[];
+  canEdit?: boolean;
   busyIds: Set<string>;
   onContractDeleted?: (contractId: string) => void;
   onDeleted?: () => void | Promise<void>;
@@ -49,6 +51,7 @@ export function DocsGrid({
         <DocCard
           key={contract.id}
           contract={contract}
+          canEdit={canEdit}
           isBusy={busyIds.has(contract.id)}
           onContractDeleted={onContractDeleted}
           onDeleted={onDeleted}
@@ -61,12 +64,14 @@ export function DocsGrid({
 
 function DocCard({
   contract,
+  canEdit = true,
   isBusy,
   onContractDeleted,
   onDeleted,
   onRetry,
 }: {
   contract: Contract;
+  canEdit?: boolean;
   isBusy: boolean;
   onContractDeleted?: (contractId: string) => void;
   onDeleted?: () => void | Promise<void>;
@@ -151,6 +156,7 @@ function DocCard({
           <FileStatusBadge status={ui.displayStatus} />
         )}
       </CardContent>
+      {canEdit && (
       <CardFooter className="flex flex-col gap-2 border-t border-zinc-100 pt-4">
         {ui.showRetry && (
           <Button
@@ -204,6 +210,7 @@ function DocCard({
           </Button>
         </div>
       </CardFooter>
+      )}
     </Card>
   );
 }

@@ -95,6 +95,25 @@ export default function SignupPage() {
     }
 
     try {
+      const orgResponse = await fetch("/api/auth/setup-organisation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company: company.trim() }),
+      });
+      if (!orgResponse.ok) {
+        const orgPayload = (await orgResponse.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        console.error(
+          "[signup] organisation setup failed:",
+          orgPayload.error ?? orgResponse.statusText
+        );
+      }
+    } catch (orgError) {
+      console.error("[signup] organisation setup failed:", orgError);
+    }
+
+    try {
       const emailResponse = await fetch("/api/email/signup-notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

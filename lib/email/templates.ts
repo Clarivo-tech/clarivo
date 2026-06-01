@@ -91,6 +91,65 @@ export function trialExpiredEmail(firstName: string): EmailTemplate {
   return { subject, html };
 }
 
+export function teamInviteEmail(params: {
+  inviterFirstName: string;
+  inviterName: string;
+  organisationName: string;
+  role: string;
+  roleDescription: string;
+  acceptUrl: string;
+}): EmailTemplate {
+  const subject = `${params.inviterFirstName} has invited you to join Clarivo`;
+  const html = shell(
+    "Clarivo",
+    "#F97316",
+    `
+    <p style="margin:0 0 12px 0;font-size:16px;">
+      <strong>${params.inviterName}</strong> has invited you to join
+      <strong>${params.organisationName}</strong> on Clarivo.
+    </p>
+    <p style="margin:0 0 16px 0;color:#444;">
+      Clarivo is an AI-powered contract intelligence platform.
+    </p>
+    <p style="margin:0 0 8px 0;color:#444;">
+      As <strong>${params.role}</strong>, you'll be able to:
+    </p>
+    <p style="margin:0 0 20px 0;color:#444;">${params.roleDescription}</p>
+    ${ctaButton("Accept Invitation", params.acceptUrl)}
+    <p style="margin:20px 0 0 0;color:#666;font-size:13px;">
+      This invite expires in 7 days.
+    </p>
+  `
+  );
+  return { subject, html };
+}
+
+export function teamInviteFounderNotificationEmail(params: {
+  organisationName: string;
+  inviterName: string;
+  inviterEmail: string;
+  inviteeEmail: string;
+  role: string;
+}): EmailTemplate {
+  const subject = `👥 Team invite sent — ${params.organisationName}`;
+  const html = `
+  <div style="margin:0;padding:24px;background:#f5f5f5;font-family:Inter,Arial,sans-serif;color:#111;">
+    <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
+      <div style="padding:18px 22px;background:#111827;color:#fff;">
+        <h1 style="margin:0;font-size:18px;">${subject}</h1>
+      </div>
+      <div style="padding:20px 22px;font-size:14px;">
+        <p style="margin:0 0 10px 0;"><strong>Organisation:</strong> ${params.organisationName}</p>
+        <p style="margin:0 0 10px 0;"><strong>Invited by:</strong> ${params.inviterName} (${params.inviterEmail})</p>
+        <p style="margin:0 0 10px 0;"><strong>Invitee:</strong> ${params.inviteeEmail}</p>
+        <p style="margin:0;"><strong>Role:</strong> ${params.role}</p>
+      </div>
+      <div style="padding:14px 22px;border-top:1px solid #eee;font-size:12px;color:#777;">clarivo-tech.com</div>
+    </div>
+  </div>`;
+  return { subject, html };
+}
+
 export function founderNotificationEmail(user: {
   firstName: string;
   lastName: string;

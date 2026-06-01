@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api/auth";
+import { requireCanChat, requireOrgRole } from "@/lib/api/require-role";
 import { buildContractContextPrompt } from "@/lib/chat/build-contract-context";
 import type { ContractData } from "@/lib/types/contracts";
 
@@ -10,6 +11,9 @@ const MODEL = "claude-sonnet-4-5";
 export async function POST(request: Request) {
   const auth = await requireUser();
   if (!auth.user) return auth.response;
+
+  const roleCheck = await requireOrgRole(auth.supabase, auth.user, requireCanChat);
+  if (!roleCheck.ok) return roleCheck.response;
 
   let body: { message?: string; contractData?: ContractData[] };
 

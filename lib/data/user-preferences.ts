@@ -8,6 +8,7 @@ import {
 export type UserPreferences = {
   id: string;
   user_id: string;
+  organisation_id: string | null;
   base_currency: SupportedCurrency;
   display_name: string | null;
   trial_started_at: string | null;
@@ -58,6 +59,7 @@ export async function getUserPreferences(
   return {
     id: "",
     user_id: userId,
+    organisation_id: null,
     base_currency: DEFAULT_BASE_CURRENCY,
     display_name: null,
     trial_started_at: null,

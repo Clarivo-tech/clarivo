@@ -6,7 +6,21 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeCurrencyCode } from "@/lib/currency/currencies";
 import { upsertBaseCurrency } from "@/lib/data/user-preferences";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
+import { userCanAccessContract } from "@/lib/team/contract-access";
+import { getUserRole } from "@/lib/team/org";
+import { canEditContracts } from "@/lib/team/roles";
 import type { ContractData } from "@/lib/types/contracts";
+
+async function assertCanEdit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<{ error?: string }> {
+  const role = await getUserRole(supabase, userId);
+  if (role && !canEditContracts(role)) {
+    return { error: "You have read-only access." };
+  }
+  return {};
+}
 
 export async function updateDisplayName(
   displayName: string
@@ -75,6 +89,9 @@ export async function updateContractValue(
     return { error: "You must be signed in." };
   }
 
+  const editCheck = await assertCanEdit(supabase, user.id);
+  if (editCheck.error) return editCheck;
+
   if (!Number.isFinite(contractValue) || contractValue < 0) {
     return { error: "Enter a valid contract value." };
   }
@@ -89,14 +106,14 @@ export async function updateContractValue(
     return { error: "Contract data not found." };
   }
 
-  const { data: ownedContract, error: contractError } = await supabase
-    .from("contracts")
-    .select("id")
-    .eq("id", existing.contract_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const canEdit = await userCanAccessContract(
+    supabase,
+    user.id,
+    existing.contract_id,
+    { requireEdit: true }
+  );
 
-  if (contractError || !ownedContract) {
+  if (!canEdit) {
     return { error: "You do not have permission to update this contract." };
   }
 
@@ -139,11 +156,20 @@ export async function deleteContract(
     return { error: "You must be signed in." };
   }
 
+  const editCheck = await assertCanEdit(supabase, user.id);
+  if (editCheck.error) return editCheck;
+
+  const canEdit = await userCanAccessContract(supabase, user.id, contractId, {
+    requireEdit: true,
+  });
+  if (!canEdit) {
+    return { error: "Contract not found." };
+  }
+
   const { data: contract, error: fetchError } = await supabase
     .from("contracts")
     .select("storage_path, file_url")
     .eq("id", contractId)
-    .eq("user_id", user.id)
     .single();
 
   if (fetchError || !contract) {
@@ -192,11 +218,20 @@ export async function toggleContractActiveStatus(
     return { error: "You must be signed in." };
   }
 
+  const editCheck = await assertCanEdit(supabase, user.id);
+  if (editCheck.error) return editCheck;
+
+  const canEdit = await userCanAccessContract(supabase, user.id, contractId, {
+    requireEdit: true,
+  });
+  if (!canEdit) {
+    return { error: "Contract not found." };
+  }
+
   const { data: existing, error: fetchError } = await supabase
     .from("contracts")
     .select("id, is_active")
     .eq("id", contractId)
-    .eq("user_id", user.id)
     .single();
 
   if (fetchError || !existing) {
@@ -234,14 +269,26 @@ export async function dismissRenewalAlert(
 
   if (!user) return { error: "You must be signed in." };
 
+  const editCheck = await assertCanEdit(supabase, user.id);
+  if (editCheck.error) return editCheck;
+
   const { data: existing, error: fetchError } = await supabase
     .from("contract_data")
-    .select("id, user_id")
+    .select("id, contract_id")
     .eq("id", contractDataId)
-    .eq("user_id", user.id)
     .maybeSingle();
 
   if (fetchError || !existing) {
+    return { error: "Renewal alert not found." };
+  }
+
+  const canEdit = await userCanAccessContract(
+    supabase,
+    user.id,
+    existing.contract_id,
+    { requireEdit: true }
+  );
+  if (!canEdit) {
     return { error: "Renewal alert not found." };
   }
 
@@ -252,7 +299,6 @@ export async function dismissRenewalAlert(
       updated_at: new Date().toISOString(),
     })
     .eq("id", contractDataId)
-    .eq("user_id", user.id)
     .select("*")
     .single();
 

@@ -38,8 +38,10 @@ function applyUploadSuccess(
 
 export function DocsPageClient({
   initialContracts,
+  canUpload = true,
 }: {
   initialContracts: Contract[];
+  canUpload?: boolean;
 }) {
   const router = useRouter();
   const [contracts, setContracts] = useState(initialContracts);
@@ -123,10 +125,17 @@ export function DocsPageClient({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
-        <DocsUpload onUploadComplete={handleUploadComplete} />
+        {canUpload ? (
+          <DocsUpload onUploadComplete={handleUploadComplete} />
+        ) : (
+          <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+            You have read-only access. Contact an admin to upload contracts.
+          </p>
+        )}
       </div>
       <DocsGrid
         contracts={contracts}
+        canEdit={canUpload}
         busyIds={busyIds}
         onContractDeleted={removeContract}
         onDeleted={handleDeleted}

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getContracts } from "@/lib/data/contracts";
 import { DocsPageClient } from "@/components/dashboard/docs-page-client";
+import { getOrgContext } from "@/lib/team/org";
+import { canUploadContracts } from "@/lib/team/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +14,14 @@ export default async function DocsPage() {
 
   if (!user) return null;
 
-  const contracts = await getContracts(supabase, user.id, {
-    includeInactive: true,
-  });
+  const [contracts, orgContext] = await Promise.all([
+    getContracts(supabase, user.id, { includeInactive: true }),
+    getOrgContext(supabase, user.id),
+  ]);
+
+  const canUpload = orgContext
+    ? canUploadContracts(orgContext.role)
+    : true;
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">
@@ -29,7 +36,7 @@ export default async function DocsPage() {
         </div>
       </div>
 
-      <DocsPageClient initialContracts={contracts} />
+      <DocsPageClient initialContracts={contracts} canUpload={canUpload} />
     </div>
   );
 }
