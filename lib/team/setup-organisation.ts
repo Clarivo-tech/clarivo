@@ -1,14 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
+import { extractEmailDomain } from "@/lib/team/email-domain";
 
 export async function setupOrganisationForUser(
   userId: string,
   companyName: string,
-  supabase?: SupabaseClient
+  supabase?: SupabaseClient,
+  ownerEmail?: string | null
 ): Promise<{ organisationId?: string; error?: string }> {
   const admin = tryCreateAdminClient();
   if (admin) {
-    return setupOrganisationWithClient(admin, userId, companyName);
+    return setupOrganisationWithClient(admin, userId, companyName, ownerEmail);
   }
 
   if (!supabase) {
@@ -18,13 +20,14 @@ export async function setupOrganisationForUser(
     };
   }
 
-  return setupOrganisationWithClient(supabase, userId, companyName);
+  return setupOrganisationWithClient(supabase, userId, companyName, ownerEmail);
 }
 
 async function setupOrganisationWithClient(
   client: SupabaseClient,
   userId: string,
-  companyName: string
+  companyName: string,
+  ownerEmail?: string | null
 ): Promise<{ organisationId?: string; error?: string }> {
   const { data: existingPrefs } = await client
     .from("user_preferences")
@@ -57,6 +60,7 @@ async function setupOrganisationWithClient(
 
   const trimmedCompany = companyName.trim() || "My";
   const orgName = `${trimmedCompany} Workspace`;
+  const allowedEmailDomain = extractEmailDomain(ownerEmail ?? "");
 
   const { data: org, error: orgError } = await client
     .from("organisations")
@@ -65,6 +69,7 @@ async function setupOrganisationWithClient(
       owner_id: userId,
       plan: "trial",
       seat_limit: 1,
+      allowed_email_domain: allowedEmailDomain,
     })
     .select("id")
     .single();

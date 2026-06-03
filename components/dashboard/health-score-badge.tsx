@@ -32,7 +32,7 @@ export function HealthScoreBadge({ row }: { row: ContractData }) {
             tier === "high" &&
               "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80",
             tier === "medium" &&
-              "bg-orange-50 text-[#EA580C] ring-1 ring-orange-200/80",
+              "bg-orange-50 text-[#111827] ring-1 ring-orange-200/80",
             tier === "low" &&
               "bg-red-50 text-red-700 ring-1 ring-red-200/80"
           )}

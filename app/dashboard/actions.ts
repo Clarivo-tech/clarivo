@@ -138,6 +138,113 @@ export async function updateContractValue(
   return { contractData: data as ContractData };
 }
 
+export type ContractDetailsInput = {
+  vendorName: string;
+  contractType: string;
+  contractValue: number | null;
+  currency: string;
+  startDate: string | null;
+  endDate: string | null;
+  renewalDate: string | null;
+  noticePeriodDays: number | null;
+  autoRenews: boolean | null;
+  summary: string;
+};
+
+function parseOptionalDate(value: string | null): string | null {
+  if (!value?.trim()) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return value.trim();
+}
+
+export async function updateContractDetails(
+  contractDataId: string,
+  input: ContractDetailsInput
+): Promise<{ error?: string; contractData?: ContractData }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const editCheck = await assertCanEdit(supabase, user.id);
+  if (editCheck.error) return editCheck;
+
+  const vendorName = input.vendorName.trim();
+  if (!vendorName) {
+    return { error: "Vendor name is required." };
+  }
+
+  if (
+    input.contractValue != null &&
+    (!Number.isFinite(input.contractValue) || input.contractValue < 0)
+  ) {
+    return { error: "Enter a valid contract value." };
+  }
+
+  if (
+    input.noticePeriodDays != null &&
+    (!Number.isInteger(input.noticePeriodDays) || input.noticePeriodDays < 0)
+  ) {
+    return { error: "Notice period must be a whole number of days." };
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("contract_data")
+    .select("id, contract_id")
+    .eq("id", contractDataId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { error: "Contract data not found." };
+  }
+
+  const canEdit = await userCanAccessContract(
+    supabase,
+    user.id,
+    existing.contract_id,
+    { requireEdit: true }
+  );
+
+  if (!canEdit) {
+    return { error: "You do not have permission to update this contract." };
+  }
+
+  const { data, error } = await supabase
+    .from("contract_data")
+    .update({
+      vendor_name: vendorName,
+      contract_type: input.contractType.trim() || null,
+      contract_value: input.contractValue,
+      currency:
+        input.contractValue != null
+          ? normalizeCurrencyCode(input.currency)
+          : null,
+      start_date: parseOptionalDate(input.startDate),
+      end_date: parseOptionalDate(input.endDate),
+      renewal_date: parseOptionalDate(input.renewalDate),
+      notice_period_days: input.noticePeriodDays,
+      auto_renews: input.autoRenews,
+      summary: input.summary.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", contractDataId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/analytics");
+  return { contractData: data as ContractData };
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

@@ -14,7 +14,7 @@ export function DashboardToast({
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 text-xs font-medium text-[#F97316] hover:text-[#EA580C]"
+        className="shrink-0 text-xs font-medium text-[#F97316] hover:text-[#111827]"
       >
         Dismiss
       </button>

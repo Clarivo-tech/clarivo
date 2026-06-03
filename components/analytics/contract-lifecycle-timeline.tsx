@@ -9,34 +9,12 @@ import {
   type TimelineBarStatus,
 } from "@/lib/analytics/compute-analytics";
 import type { ContractData } from "@/lib/types/contracts";
-import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<TimelineBarStatus, string> = {
   active: "Active",
   expiring: "Expiring soon",
   future: "Future",
 };
-
-const VIBRANT_VENDOR_COLORS = [
-  "#F97316",
-  "#38BDF8",
-  "#A855F7",
-  "#22C55E",
-  "#EAB308",
-  "#EC4899",
-  "#EF4444",
-  "#06B6D4",
-  "#8B5CF6",
-  "#14B8A6",
-];
-
-function colorForVendor(vendorName: string): string {
-  let hash = 0;
-  for (let i = 0; i < vendorName.length; i += 1) {
-    hash = (hash * 31 + vendorName.charCodeAt(i)) >>> 0;
-  }
-  return VIBRANT_VENDOR_COLORS[hash % VIBRANT_VENDOR_COLORS.length];
-}
 
 export function ContractLifecycleTimeline({
   contractData,
@@ -77,7 +55,7 @@ export function ContractLifecycleTimeline({
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rotate-45 bg-zinc-700/80" />
+          <span className="size-2.5 rotate-45 bg-zinc-700" aria-hidden />
           Renewal date
         </span>
       </div>
@@ -90,7 +68,9 @@ export function ContractLifecycleTimeline({
       </div>
 
       <div className="mt-4 flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1">
-        {bars.map((bar) => (
+        {bars.map((bar) => {
+          const barColor = timelineStatusColor(bar.status);
+          return (
           <div
             key={bar.contractId}
             className="grid grid-cols-[minmax(0,140px)_1fr] items-center gap-3"
@@ -103,30 +83,26 @@ export function ContractLifecycleTimeline({
             </p>
             <div className="relative h-7 rounded-md bg-zinc-100">
               <div
-                className={cn(
-                  "absolute top-1/2 h-5 -translate-y-1/2 rounded-md shadow-sm transition-opacity"
-                )}
+                className="absolute top-1/2 h-5 -translate-y-1/2 rounded-md shadow-sm"
                 style={{
                   left: `${bar.leftPercent}%`,
                   width: `${bar.widthPercent}%`,
-                  backgroundColor: colorForVendor(bar.vendorName),
-                  boxShadow: `0 0 12px ${colorForVendor(bar.vendorName)}40`,
+                  backgroundColor: barColor,
+                  boxShadow: `0 0 10px ${barColor}55`,
                 }}
                 title={`${bar.vendorName} (${STATUS_LABELS[bar.status]})`}
               />
               {bar.renewalLeftPercent != null ? (
                 <div
-                  className="absolute top-1/2 z-10 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-zinc-900 bg-white"
-                  style={{
-                    left: `${bar.renewalLeftPercent}%`,
-                    boxShadow: "0 0 8px rgba(0,0,0,0.25)",
-                  }}
+                  className="absolute top-1/2 z-10 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-zinc-700 ring-1 ring-white"
+                  style={{ left: `${bar.renewalLeftPercent}%` }}
                   title="Renewal date"
                 />
               ) : null}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </AnalyticsChartCard>
   );

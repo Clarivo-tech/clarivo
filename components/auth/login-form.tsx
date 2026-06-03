@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -15,15 +15,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isAccountLocked } from "@/lib/trial/access";
+import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect");
+  const trialExpiredParam = searchParams.get("trial_expired");
+  const emailParam = searchParams.get("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [emailParam]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,9 +52,34 @@ export function LoginForm() {
       return;
     }
 
-    router.push(
-      redirectTo && redirectTo.startsWith("/") ? redirectTo : "/dashboard"
-    );
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user?.id) {
+      const { data: prefs } = await supabase
+        .from("user_preferences")
+        .select("trial_expires_at, subscription_status, trial_started_at, trial_used")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (
+        prefs &&
+        isAccountLocked({
+          subscription_status: prefs.subscription_status,
+          trial_expires_at: prefs.trial_expires_at,
+          trial_started_at: prefs.trial_started_at,
+          trial_used: prefs.trial_used,
+        })
+      ) {
+        window.location.assign("/dashboard/upgrade");
+        return;
+      }
+    }
+
+    const destination =
+      redirectTo && redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+    router.push(destination);
     router.refresh();
   }
 
@@ -68,13 +103,20 @@ export function LoginForm() {
 
       <Card className="w-full max-w-md border-orange-100/80 shadow-xl shadow-orange-500/5">
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
+          <CardTitle className="font-sans text-xl font-bold tracking-tight text-zinc-900">
+            Welcome back
+          </CardTitle>
           <CardDescription>
             Sign in to your account to manage contracts and spend.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {trialExpiredParam === "1" && !error && (
+              <Alert variant="destructive">
+                <AlertDescription>{TRIAL_EXPIRED_MESSAGE}</AlertDescription>
+              </Alert>
+            )}
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -121,7 +163,7 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={loading}
-              className="mt-1 h-10 w-full bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="mt-1 h-10 w-full bg-[#F97316] text-white hover:bg-[#111827]"
             >
               {loading ? (
                 <>
@@ -135,12 +177,21 @@ export function LoginForm() {
           </form>
 
           <p className="mt-6 text-center text-sm text-zinc-500">
-            Don&apos;t have an account?{" "}
+            Need full access after your trial?{" "}
+            <Link
+              href="/login?redirect=/dashboard/upgrade"
+              className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
+            >
+              Sign in to upgrade
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-zinc-500">
+            New to Clarivo?{" "}
             <Link
               href="/signup"
-              className="font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+              className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
             >
-              Sign up
+              Start free trial
             </Link>
           </p>
         </CardContent>

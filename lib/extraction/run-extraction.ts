@@ -3,6 +3,7 @@ import { extractContractWithClaude } from "@/lib/extraction/call-claude";
 import { deriveContractDataStatus } from "@/lib/extraction/contract-status";
 import { parseExtractedJson } from "@/lib/extraction/parse";
 import { downloadContractPdf } from "@/lib/storage/download-contract-pdf";
+import { ensureVendorForContract } from "@/lib/vendors/ensure-vendor";
 
 export async function runContractExtraction(
   supabase: SupabaseClient,
@@ -100,6 +101,14 @@ export async function runContractExtraction(
       console.error("[extract] contract_data insert failed", insertError);
       await markFailed(supabase, contractId, userId);
       return { error: insertError.message };
+    }
+
+    if (extracted.vendor_name?.trim()) {
+      await ensureVendorForContract(supabase, {
+        userId,
+        contractId,
+        vendorName: extracted.vendor_name,
+      });
     }
 
     const { error: updateError } = await supabase

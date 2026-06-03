@@ -184,18 +184,20 @@ export function SpendByVendorChart({
                   y2="0"
                 >
                   <stop offset="0%" stopColor="#F97316" />
+                  <stop offset="50%" stopColor="#FB923C" />
                   <stop offset="100%" stopColor="#38BDF8" />
                 </linearGradient>
                 <linearGradient
                   id="spendAreaFill"
                   x1="0"
                   y1="0"
-                  x2="0"
+                  x2="1"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor="#F97316" stopOpacity={0.28} />
-                  <stop offset="55%" stopColor="#38BDF8" stopOpacity={0.1} />
-                  <stop offset="100%" stopColor="#38BDF8" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#F97316" stopOpacity={0.42} />
+                  <stop offset="45%" stopColor="#FDBA74" stopOpacity={0.28} />
+                  <stop offset="70%" stopColor="#38BDF8" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#38BDF8" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -235,9 +237,11 @@ export function SpendByVendorChart({
               <Area
                 type="monotone"
                 dataKey="value"
+                baseValue={0}
                 stroke="url(#spendLineGradient)"
                 strokeWidth={2.5}
                 fill="url(#spendAreaFill)"
+                fillOpacity={1}
                 dot={<GlowingDot />}
                 activeDot={<GlowingDot />}
                 isAnimationActive

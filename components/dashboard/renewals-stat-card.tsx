@@ -7,7 +7,7 @@ import { useCurrency } from "@/components/providers/currency-provider";
 import { cn } from "@/lib/utils";
 
 const urgencyDateStyles = {
-  urgent: "font-semibold text-[#EA580C]",
+  urgent: "font-semibold text-[#111827]",
   soon: "font-semibold text-[#F97316]",
   later: "font-semibold text-emerald-600",
 } as const;

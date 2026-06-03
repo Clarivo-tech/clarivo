@@ -80,7 +80,7 @@ export function trialExpiredEmail(firstName: string): EmailTemplate {
   const subject = "Your Clarivo trial has ended";
   const html = shell(
     "Your trial has ended",
-    "#EA580C",
+    "#111827",
     `
     <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${firstName}</strong>, your 5-day free trial has expired.</p>
     <p style="margin:0 0 8px 0;color:#444;">Upgrade now to regain full access to your contracts.</p>
@@ -147,6 +147,65 @@ export function teamInviteFounderNotificationEmail(params: {
       <div style="padding:14px 22px;border-top:1px solid #eee;font-size:12px;color:#777;">clarivo-tech.com</div>
     </div>
   </div>`;
+  return { subject, html };
+}
+
+export function demoBookingCustomerEmail(params: {
+  firstName: string;
+  company: string;
+  dateLabel: string;
+  timeLabel: string;
+  googleCalendarUrl: string;
+}): EmailTemplate {
+  const subject = `Your Clarivo demo is confirmed - ${params.dateLabel} at ${params.timeLabel}`;
+  const html = shell(
+    "Clarivo Demo Confirmed",
+    "#F97316",
+    `
+    <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${params.firstName}</strong>, your demo is confirmed.</p>
+    <p style="margin:0 0 12px 0;color:#444;">
+      <strong>Date:</strong> ${params.dateLabel}<br/>
+      <strong>Time:</strong> ${params.timeLabel} (UK time)<br/>
+      <strong>Duration:</strong> 30 minutes
+    </p>
+    <p style="margin:0 0 8px 0;color:#444;"><strong>What to expect:</strong></p>
+    <ul style="margin:8px 0 0 18px;color:#444;">
+      <li>A live walkthrough of the Clarivo platform</li>
+      <li>How Clarivo can work for ${params.company}</li>
+      <li>Q&A and next steps</li>
+    </ul>
+    <p style="margin:14px 0 0 0;color:#444;">We'll send you a meeting link 30 minutes before your demo.</p>
+    ${ctaButton("Add to Google Calendar", params.googleCalendarUrl)}
+    <p style="margin:14px 0 0 0;color:#444;">Need to reschedule? Email hello@clarivo-tech.com</p>
+  `
+  );
+  return { subject, html };
+}
+
+export function demoBookingAdminEmail(params: {
+  name: string;
+  email: string;
+  company: string;
+  jobTitle?: string | null;
+  dateLabel: string;
+  timeLabel: string;
+  notes?: string | null;
+}): EmailTemplate {
+  const subject = `📅 New demo booked - ${params.company} - ${params.dateLabel} at ${params.timeLabel}`;
+  const html = shell(
+    "New Demo Booking",
+    "#F97316",
+    `
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Name:</strong> ${params.name}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Email:</strong> ${params.email}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Company:</strong> ${params.company}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Job title:</strong> ${params.jobTitle || "-"}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Date:</strong> ${params.dateLabel}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Time:</strong> ${params.timeLabel}</p>
+    <p style="margin:0 0 12px 0;color:#444;"><strong>Notes:</strong> ${params.notes || "-"}</p>
+    ${ctaButton("Reply by email", `mailto:${params.email}`)}
+  `
+  );
   return { subject, html };
 }
 

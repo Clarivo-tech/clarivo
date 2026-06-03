@@ -17,7 +17,7 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "Clarivo — AI-Powered Contract Intelligence",
+  title: "Clarivo - AI-Powered Contract Intelligence",
   description:
     "Upload contracts, extract every critical term, and keep your portfolio visible so you never miss a renewal.",
 };

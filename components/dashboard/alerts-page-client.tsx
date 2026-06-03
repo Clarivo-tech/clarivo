@@ -15,6 +15,8 @@ import {
 import type { Contract, ContractData } from "@/lib/types/contracts";
 import { cn } from "@/lib/utils";
 
+const cardTitleClassName = "font-sans text-base font-semibold text-zinc-900";
+
 type AlertType = "Renewal" | "Notice Deadline" | "Expiry";
 
 type AlertRow = {
@@ -93,7 +95,7 @@ function buildAlerts(contractData: ContractData[]): AlertRow[] {
 
 function daysClass(daysUntil: number) {
   if (daysUntil < 30) return "text-red-600";
-  if (daysUntil < 60) return "text-[#C2410C]";
+  if (daysUntil < 60) return "text-[#111827]";
   return "text-emerald-600";
 }
 
@@ -224,7 +226,7 @@ export function AlertsPageClient({
                           "border-0",
                           alert.status === "Overdue"
                             ? "bg-red-100 text-red-700"
-                            : "bg-orange-100 text-[#C2410C]"
+                            : "bg-orange-100 text-[#111827]"
                         )}
                       >
                         {alert.status}
@@ -252,7 +254,7 @@ export function AlertsPageClient({
 
       <Card className="border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <CardHeader>
-          <CardTitle>Reminder Preferences</CardTitle>
+          <CardTitle className={cardTitleClassName}>Reminder Preferences</CardTitle>
           <CardDescription>
             Choose event types and lead times for email reminders.
           </CardDescription>
@@ -300,7 +302,7 @@ export function AlertsPageClient({
             <Button
               onClick={savePrefs}
               disabled={prefsPending}
-              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="bg-[#F97316] text-white hover:bg-[#111827]"
             >
               {prefsPending ? <Loader2 className="animate-spin" /> : null}
               Save preferences
@@ -311,7 +313,7 @@ export function AlertsPageClient({
 
       <Card className="border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <CardHeader>
-          <CardTitle>Custom Reminders</CardTitle>
+          <CardTitle className={cardTitleClassName}>Custom Reminders</CardTitle>
           <CardDescription>
             Add manual reminders for one-off follow ups.
           </CardDescription>
@@ -368,7 +370,7 @@ export function AlertsPageClient({
               <Button
                 type="submit"
                 disabled={formPending || contracts.length === 0}
-                className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+                className="bg-[#F97316] text-white hover:bg-[#111827]"
               >
                 {formPending ? <Loader2 className="animate-spin" /> : null}
                 Save reminder

@@ -7,6 +7,7 @@ import {
   getContracts,
 } from "@/lib/data/contracts";
 import { getUserPreferences } from "@/lib/data/user-preferences";
+import { buildVendorIdByContractId } from "@/lib/data/vendors";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
 import { DashboardDataProvider } from "@/components/dashboard/dashboard-data-provider";
 import { DashboardInsightsRow } from "@/components/dashboard/dashboard-insights-row";
@@ -39,15 +40,29 @@ export default async function DashboardPage() {
 
   const stats = computeDashboardStats(contracts, contractData);
 
+  const firstName =
+    preferences.first_name?.trim() ||
+    (user.user_metadata?.first_name as string | undefined)?.trim() ||
+    (user.user_metadata?.display_name as string | undefined)
+      ?.trim()
+      .split(/\s+/)[0] ||
+    null;
+
   return (
     <CurrencyProvider
       baseCurrency={preferences.base_currency}
       rates={rates}
     >
-      <DashboardDataProvider initialContractData={contractData}>
+      <DashboardDataProvider
+        initialContractData={contractData}
+        vendorIdByContractId={buildVendorIdByContractId(contracts)}
+      >
         <div className="mx-auto flex max-w-7xl flex-col gap-10">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+            <p className="text-sm font-medium text-[#111827]">
+              Welcome back{firstName ? `, ${firstName}` : ""}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
               Dashboard
             </h1>
             <p className="mt-2 text-sm text-zinc-500">

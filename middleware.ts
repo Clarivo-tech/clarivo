@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAccountLocked, markTrialExpired } from "@/lib/trial/access";
+import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup"] as const;
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/trial-expired"] as const;
 
 function isPublicRoute(pathname: string): boolean {
   if ((PUBLIC_ROUTES as readonly string[]).includes(pathname)) {
@@ -27,15 +29,53 @@ function isInviteAcceptApi(pathname: string): boolean {
   return pathname === "/api/invite/accept";
 }
 
-function buildTrialWindow() {
-  const start = new Date();
-  const end = new Date(start);
-  end.setDate(end.getDate() + 5);
+function isTrialPaywallExempt(pathname: string): boolean {
+  return (
+    pathname === "/trial-expired" ||
+    pathname === "/dashboard/upgrade" ||
+    pathname === "/api/upgrade"
+  );
+}
+
+function requiresTrialCheck(pathname: string): boolean {
+  return isProtectedRoute(pathname) || pathname === "/trial-expired";
+}
+
+function withFallbackTrialExpiry(
+  prefs: {
+    trial_expires_at: string | null;
+    subscription_status: string | null;
+    trial_started_at: string | null;
+    trial_used: boolean | null;
+  },
+  userCreatedAt: string | undefined
+) {
+  if (prefs.trial_expires_at || !userCreatedAt) {
+    return prefs;
+  }
+
+  const status = (prefs.subscription_status ?? "").toLowerCase();
+  if (status === "active" || status === "expired") {
+    return prefs;
+  }
+
+  // Fallback for incomplete profile rows: derive trial expiry from auth user creation.
+  // Current test setup uses a 5-minute trial window.
+  const fallbackExpiry = new Date(
+    new Date(userCreatedAt).getTime() + 5 * 60 * 1000
+  ).toISOString();
+
   return {
-    trial_started_at: start.toISOString(),
-    trial_expires_at: end.toISOString(),
-    subscription_status: "trial",
-  } as const;
+    ...prefs,
+    trial_expires_at: fallbackExpiry,
+  };
+}
+
+function redirectLockedUserToUpgrade(request: NextRequest): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = "/dashboard/upgrade";
+  url.search = "";
+  return NextResponse.redirect(url);
 }
 
 export async function middleware(request: NextRequest) {
@@ -68,7 +108,27 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (user && isPublicRoute(pathname) && !pathname.startsWith("/invite/")) {
+  if (
+    user &&
+    isPublicRoute(pathname) &&
+    !pathname.startsWith("/invite/") &&
+    pathname !== "/trial-expired"
+  ) {
+    const { data: prefs } = await supabase
+      .from("user_preferences")
+      .select("trial_expires_at, subscription_status, trial_started_at, trial_used")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (
+      prefs &&
+      isAccountLocked({
+        ...withFallbackTrialExpiry(prefs, user.created_at),
+      })
+    ) {
+      return redirectLockedUserToUpgrade(request);
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -109,10 +169,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (user && pathname.startsWith("/dashboard")) {
+  if (user && requiresTrialCheck(pathname)) {
     const { data: prefs, error } = await supabase
       .from("user_preferences")
-      .select("trial_expires_at, subscription_status")
+      .select("trial_expires_at, subscription_status, trial_started_at, trial_used")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -121,38 +181,29 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse;
     }
 
-    let effectivePrefs = prefs;
-    if (!effectivePrefs) {
-      const trialDefaults = buildTrialWindow();
-      const { data: created, error: createError } = await supabase
-        .from("user_preferences")
-        .upsert(
-          {
-            user_id: user.id,
-            ...trialDefaults,
-          },
-          { onConflict: "user_id" }
-        )
-        .select("trial_expires_at, subscription_status")
-        .single();
+    if (prefs) {
+      const locked = isAccountLocked({
+        ...withFallbackTrialExpiry(prefs, user.created_at),
+      });
 
-      if (createError) {
-        console.error("[middleware] preferences create:", createError.message);
-        return supabaseResponse;
+      if (locked) {
+        if (prefs.subscription_status === "trial") {
+          void markTrialExpired(supabase, user.id);
+        }
+
+        if (isTrialPaywallExempt(pathname)) {
+          return supabaseResponse;
+        }
+
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json(
+            { error: TRIAL_EXPIRED_MESSAGE },
+            { status: 403 }
+          );
+        }
+
+        return redirectLockedUserToUpgrade(request);
       }
-      effectivePrefs = created;
-    }
-
-    const status = effectivePrefs?.subscription_status ?? "trial";
-    const expiresAt = effectivePrefs?.trial_expires_at
-      ? new Date(effectivePrefs.trial_expires_at)
-      : null;
-    const trialExpired = expiresAt != null && expiresAt.getTime() < Date.now();
-
-    if (status === "trial" && trialExpired && pathname !== "/trial-expired") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/trial-expired";
-      return NextResponse.redirect(url);
     }
   }
 

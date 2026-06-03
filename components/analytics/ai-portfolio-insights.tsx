@@ -100,7 +100,7 @@ export function AiPortfolioInsights({
               type="button"
               size="sm"
               onClick={() => void fetchInsights()}
-              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="bg-[#F97316] text-white hover:bg-[#111827]"
             >
               Try again
             </Button>

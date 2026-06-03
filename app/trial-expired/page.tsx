@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
+import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 
 const LOST_ACCESS_ITEMS = [
   "Live dashboard and renewal tracking",
@@ -21,7 +22,7 @@ export default function TrialExpiredPage() {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/login?trial_expired=1");
     router.refresh();
   }
 
@@ -44,8 +45,8 @@ export default function TrialExpiredPage() {
             Your free trial has ended
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-            You&apos;ve had a taste of centralised contract intelligence. Upgrade
-            to Pro to keep full access.
+            {TRIAL_EXPIRED_MESSAGE} Sign in and upgrade to restore access to your
+            workspace. Free trials are limited to one per account.
           </p>
 
           <div className="mt-6 rounded-xl border border-orange-400/30 bg-[#F97316]/10 p-4">
@@ -62,12 +63,12 @@ export default function TrialExpiredPage() {
             </ul>
           </div>
 
-          <Link
-            href="/api/checkout"
-            className="mt-7 inline-flex w-full items-center justify-center rounded-lg bg-[#F97316] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C]"
+          <a
+            href={UPGRADE_PAGE_PATH}
+            className="mt-7 inline-flex w-full items-center justify-center rounded-lg bg-[#F97316] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#111827]"
           >
-            Upgrade to Pro — £99/month
-          </Link>
+            Choose licenses & upgrade
+          </a>
 
           <div className="mt-5 flex items-center justify-between text-sm">
             <a

@@ -21,6 +21,7 @@ type OpenContractPanelFn = (
 
 type DashboardDataContextValue = {
   contractData: ContractData[];
+  vendorIdByContractId: Record<string, string>;
   updateContractRow: (row: ContractData) => void;
   registerOpenContractPanel: (fn: OpenContractPanelFn | null) => void;
   openContractPanel: (row: ContractData, options?: OpenContractPanelOptions) => void;
@@ -32,9 +33,11 @@ const DashboardDataContext = createContext<DashboardDataContextValue | null>(
 
 export function DashboardDataProvider({
   initialContractData,
+  vendorIdByContractId = {},
   children,
 }: {
   initialContractData: ContractData[];
+  vendorIdByContractId?: Record<string, string>;
   children: React.ReactNode;
 }) {
   const [contractData, setContractData] = useState(initialContractData);
@@ -69,6 +72,7 @@ export function DashboardDataProvider({
     <DashboardDataContext.Provider
       value={{
         contractData,
+        vendorIdByContractId,
         updateContractRow,
         registerOpenContractPanel,
         openContractPanel,

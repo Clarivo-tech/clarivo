@@ -85,7 +85,7 @@ export function DocsUpload({
         type="button"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+        className="bg-[#F97316] text-white hover:bg-[#111827]"
       >
         {uploading ? (
           <>

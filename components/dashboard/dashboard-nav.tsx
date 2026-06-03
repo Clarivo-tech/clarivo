@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   BarChart2,
   Bell,
+  Building2,
   FileText,
+  HeartPulse,
   LayoutDashboard,
   Settings,
   Users,
@@ -23,9 +25,21 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/docs", label: "Documents", icon: FileText, exact: false },
   {
+    href: "/dashboard/vendors",
+    label: "Vendors",
+    icon: Building2,
+    exact: false,
+  },
+  {
     href: "/dashboard/analytics",
     label: "Analytics",
     icon: BarChart2,
+    exact: false,
+  },
+  {
+    href: "/dashboard/contract-health",
+    label: "Contract Health",
+    icon: HeartPulse,
     exact: false,
   },
   {
@@ -67,7 +81,7 @@ export function DashboardNav() {
                   className={cn(
                     "h-10 rounded-lg text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-[#F97316] text-white shadow-md shadow-orange-500/20 hover:bg-[#EA580C] hover:text-white data-active:bg-[#F97316] data-active:text-white"
+                      ? "bg-[#F97316] text-white shadow-md shadow-orange-500/20 hover:bg-[#111827] hover:text-white data-active:bg-[#F97316] data-active:text-white"
                       : "text-zinc-400 hover:bg-white/[0.06] hover:text-white data-active:text-white"
                   )}
                   render={

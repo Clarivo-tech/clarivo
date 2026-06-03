@@ -103,7 +103,7 @@ export function InviteAcceptClient({
       <Button
         type="button"
         disabled={pending}
-        className="w-full bg-[#F97316] text-white hover:bg-[#EA580C]"
+        className="w-full bg-[#F97316] text-white hover:bg-[#111827]"
         onClick={submit}
       >
         {pending ? (

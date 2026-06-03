@@ -16,10 +16,18 @@ export default async function TeamPage() {
   if (!user) return null;
 
   const preferences = await getUserPreferences(supabase, user.id);
-  await ensureUserOrganisation(supabase, user.id, preferences.company);
+  await ensureUserOrganisation(
+    supabase,
+    user.id,
+    preferences.company,
+    user.email
+  );
 
-  const { context, members, invites, seatsUsed, adminConfigured } =
-    await getTeamPageData(supabase, user.id, user.email);
+  const { context, members, invites, licenses } = await getTeamPageData(
+    supabase,
+    user.id,
+    user.email
+  );
 
   const canManage = context ? canManageTeam(context.role) : false;
 
@@ -30,8 +38,8 @@ export default async function TeamPage() {
           My Team
         </h1>
         <p className="mt-2 text-sm text-zinc-500">
-          Invite colleagues by email — they&apos;ll receive a link to sign up and
-          join your workspace.
+          See how many licenses you have purchased and utilised, then invite
+          colleagues with your company email domain to join your organisation.
         </p>
       </div>
 
@@ -39,10 +47,9 @@ export default async function TeamPage() {
         context={context}
         members={members}
         invites={invites}
-        seatsUsed={seatsUsed}
+        licenses={licenses}
         canManage={canManage}
         currentUserId={user.id}
-        adminConfigured={adminConfigured}
       />
     </div>
   );

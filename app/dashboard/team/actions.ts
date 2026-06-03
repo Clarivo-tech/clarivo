@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 import { teamInviteEmail } from "@/lib/email/templates";
 import { getOrgContextForTeam } from "@/lib/team/org";
+import { validateTeamInvite } from "@/lib/team/validate-invite";
 import { canInviteMembers, emailRoleAccessDescription } from "@/lib/team/roles";
 import type { InviteRole, OrganisationRole } from "@/lib/team/types";
 import { getUserPreferences } from "@/lib/data/user-preferences";
@@ -142,6 +143,16 @@ export async function resendInvite(
 
   if (fetchError || !invite) {
     return { error: "Invite not found." };
+  }
+
+  const validation = await validateTeamInvite(
+    auth.supabase,
+    auth.context!,
+    invite.email as string,
+    { excludeInviteId: inviteId }
+  );
+  if (!validation.ok) {
+    return { error: validation.error };
   }
 
   const token = randomUUID();

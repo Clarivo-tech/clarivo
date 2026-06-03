@@ -80,3 +80,56 @@ export function getHealthScoreTier(
 
 export const HEALTH_SCORE_TOOLTIP =
   "Score starts at 10. Deductions: auto-renewal with short notice (−2), notice under 30 days (−2), no exit clause (−1), ending within 6 months (−1).";
+
+export const HEALTH_SCORE_CRITERIA = [
+  {
+    points: "10",
+    title: "Starting score",
+    description: "Every contract begins at the maximum score of 10.",
+  },
+  {
+    points: "−2",
+    title: "Auto-renewal with short notice",
+    description:
+      "Applies when the contract auto-renews and the notice period is under 60 days.",
+  },
+  {
+    points: "−2",
+    title: "Notice period under 30 days",
+    description:
+      "Very little time to act before renewal or termination deadlines.",
+  },
+  {
+    points: "−1",
+    title: "No clear exit clause",
+    description:
+      "Summary text does not indicate termination for convenience, break options, or similar exit rights.",
+  },
+  {
+    points: "−1",
+    title: "Ending within 6 months",
+    description:
+      "End date or renewal date falls within the next six months.",
+  },
+] as const;
+
+export const HEALTH_SCORE_TIERS = [
+  {
+    tier: "high" as const,
+    range: "8–10",
+    label: "Healthy",
+    description: "Strong terms and manageable renewal risk.",
+  },
+  {
+    tier: "medium" as const,
+    range: "5–7",
+    label: "Watch",
+    description: "Some risk factors — review before renewal.",
+  },
+  {
+    tier: "low" as const,
+    range: "1–4",
+    label: "At risk",
+    description: "Multiple risk factors — prioritise negotiation or exit planning.",
+  },
+] as const;

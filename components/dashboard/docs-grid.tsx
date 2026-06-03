@@ -165,7 +165,7 @@ function DocCard({
             size="sm"
           disabled={cardDisabled}
           onClick={handleRetry}
-            className="w-full border-orange-200 text-[#F97316] hover:bg-orange-50 hover:text-[#EA580C]"
+            className="w-full border-orange-200 text-[#F97316] hover:bg-orange-50 hover:text-[#111827]"
           >
             {retryPending || isBusy ? (
               <Loader2 className="animate-spin" />

@@ -2,18 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart2,
   Bell,
   FileText,
+  HeartPulse,
   LayoutDashboard,
   MessageSquare,
   Settings,
   Sparkles,
   Users,
 } from "lucide-react";
-import { BookDemoModal } from "@/components/landing/book-demo-modal";
 import { ContactSection } from "@/components/landing/contact-section";
 import { cn } from "@/lib/utils";
 
@@ -29,34 +29,34 @@ const FEATURES = [
       "Upload PDFs and get vendor, value, dates, notice periods, and renewal terms extracted in under 30 seconds.",
   },
   {
-    icon: "📊",
-    title: "Live Dashboard",
+    icon: "🏢",
+    title: "Vendor Profiles",
     description:
-      "Portfolio value, renewals, and contract health in one command centre — always up to date.",
+      "Track every supplier with risk ratings, key contacts, linked contracts, document expiry alerts, and activity history.",
   },
   {
-    icon: "🔔",
-    title: "Renewal Alerts",
+    icon: "👥",
+    title: "Team and License Management",
     description:
-      "Never miss a notice deadline. See what's expiring, what's auto-renewing, and what needs action.",
+      "Manage seat usage, invite teammates by company domain, and control access across your organisation workspace.",
   },
   {
     icon: "💬",
     title: "Contract AI Chat",
     description:
-      "Ask natural-language questions across your entire portfolio — grounded only in your contract data.",
+      "Ask natural-language questions across your entire portfolio, grounded only in your contract data.",
   },
   {
     icon: "📈",
-    title: "Spend Analytics",
+    title: "Analytics and Exports",
     description:
-      "Vendor spend, portfolio growth, lifecycle timelines, and risk registers in a dedicated analytics view.",
+      "Analyze vendor spend, portfolio growth, lifecycle timelines, risk registers, and export reports to CSV.",
   },
   {
     icon: "🛡️",
-    title: "Health Scores",
+    title: "Contract and Relationship Health",
     description:
-      "Every contract scored for renewal risk, exit clauses, notice periods, and auto-renewal exposure.",
+      "Score contracts by risk criteria and monitor vendor relationship health with clear AI-backed recommendations.",
   },
 ];
 
@@ -71,7 +71,7 @@ const STEPS = [
     num: "02",
     title: "Extract",
     description:
-      "AI reads every clause — values, dates, vendors, notice periods, and renewal terms — automatically.",
+      "AI reads every clause, including values, dates, vendors, notice periods, and renewal terms automatically.",
   },
   {
     num: "03",
@@ -84,8 +84,8 @@ const STEPS = [
 const PLANS = [
   {
     name: "Enterprise",
-    price: "£99",
-    period: "/mo",
+    price: "£99.99",
+    period: "/mo per license",
     description: "One plan with everything Clarivo offers.",
     features: [
       "Unlimited contracts",
@@ -101,15 +101,15 @@ const PLANS = [
       "Everything included",
     ],
     cta: "Start free trial",
-    href: "/signup",
+    href: "/signup?intent=trial",
     highlighted: true,
   },
 ];
 
 const STATS = [
   { value: "£2.3M", label: "avg spend tracked" },
-  { value: "94%", label: "renewals caught" },
-  { value: "<30s", label: "extraction time" },
+  { value: "98%", label: "renewals caught" },
+  { value: "<20s", label: "extraction time" },
   { value: "4.9★", label: "customer rating" },
 ];
 
@@ -117,6 +117,7 @@ const MOCK_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, active: true },
   { label: "Documents", icon: FileText, active: false },
   { label: "Analytics", icon: BarChart2, active: false },
+  { label: "Contract Health", icon: HeartPulse, active: false },
   { label: "My Team", icon: Users, active: false },
   { label: "Alerts", icon: Bell, active: false },
   { label: "Settings", icon: Settings, active: false },
@@ -289,7 +290,7 @@ function MockDashboard() {
                             row.health >= 8
                               ? "bg-emerald-100 text-emerald-700"
                               : row.health >= 5
-                                ? "bg-orange-100 text-[#C2410C]"
+                                ? "bg-orange-100 text-[#111827]"
                                 : "bg-red-100 text-red-700"
                           )}
                         >
@@ -312,7 +313,7 @@ function MockDashboard() {
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-2.5">
                   <div className="rounded-lg rounded-bl-sm bg-white/95 px-2 py-1.5 text-[9px] leading-snug text-[#111827]">
-                    Ask anything about your portfolio — renewals, spend, notice
+                    Ask anything about your portfolio, including renewals, spend, notice
                     periods, and risk.
                   </div>
                   <div className="ml-auto max-w-[92%] rounded-lg rounded-br-sm bg-[#F97316] px-2 py-1.5 text-[9px] text-white">
@@ -343,10 +344,10 @@ function MockDashboard() {
                 </p>
                 <div className="mt-1.5 space-y-1 text-[9px]">
                   <p className="rounded-md bg-red-50 px-2 py-1 font-medium text-red-700">
-                    DataSync Pro — notice in 14 days
+                    DataSync Pro, notice in 14 days
                   </p>
-                  <p className="rounded-md bg-orange-50 px-2 py-1 font-medium text-[#C2410C]">
-                    Acme SaaS — renewal in 43 days
+                  <p className="rounded-md bg-orange-50 px-2 py-1 font-medium text-[#111827]">
+                    Acme SaaS, renewal in 43 days
                   </p>
                 </div>
               </div>
@@ -360,9 +361,6 @@ function MockDashboard() {
 
 export function ClarivoLanding() {
   const [scrolled, setScrolled] = useState(false);
-  const [demoOpen, setDemoOpen] = useState(false);
-
-  const openDemo = useCallback(() => setDemoOpen(true), []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -419,25 +417,30 @@ export function ClarivoLanding() {
             <a href="#pricing" className="transition-colors hover:text-[#111111]">
               Pricing
             </a>
-            <a href="#demo" className="transition-colors hover:text-[#111111]">
+            <a href="#contact" className="transition-colors hover:text-[#111111]">
               Demo
             </a>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
+              href="/signup?intent=paid"
+              className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-800 transition-colors hover:bg-purple-100 sm:px-4"
+            >
+              Sign up now
+            </Link>
+            <Link
               href="/login"
-              className="rounded-lg bg-[#F97316] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] sm:px-4"
+              className="rounded-lg bg-[#F97316] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#111827] sm:px-4"
             >
               Log in
             </Link>
-            <button
-              type="button"
-              onClick={openDemo}
+            <Link
+              href="/book-demo"
               className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:px-4"
             >
               Demo with a human
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -469,18 +472,23 @@ export function ClarivoLanding() {
               </p>
               <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row">
                 <Link
-                  href="/signup"
-                  className="w-full rounded-lg bg-[#F97316] px-6 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] sm:w-auto"
+                  href="/signup?intent=trial"
+                  className="w-full rounded-lg bg-[#F97316] px-6 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#111827] sm:w-auto"
                 >
                   Start free trial
                 </Link>
-                <button
-                  type="button"
-                  onClick={openDemo}
-                  className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
+                <Link
+                  href="/signup?intent=paid"
+                  className="w-full rounded-lg border border-purple-200 bg-purple-50 px-6 py-3.5 text-center text-sm font-semibold text-purple-800 transition-colors hover:bg-purple-100 sm:w-auto"
+                >
+                  Sign up now
+                </Link>
+                <Link
+                  href="/book-demo"
+                  className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-center text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
                 >
                   Demo with a human
-                </button>
+                </Link>
               </div>
             </div>
             <div className="mx-auto mt-14 w-full max-w-5xl sm:mt-20 lg:max-w-6xl">
@@ -532,15 +540,15 @@ export function ClarivoLanding() {
               {FEATURES.map((feature) => (
                 <article
                   key={feature.title}
-                  className="group rounded-xl border border-[#e5e5e5] bg-[#f9f9f9] p-6 transition-all hover:border-[#F97316] hover:bg-white hover:shadow-[0_8px_30px_rgba(249,115,22,0.08)]"
+                  className="group rounded-xl border border-white/10 bg-[#111827] p-6 transition-all hover:border-[#F97316]/70 hover:shadow-[0_10px_30px_rgba(17,24,39,0.45)]"
                 >
-                  <span className="text-2xl" aria-hidden>
+                  <span className="text-2xl text-white" aria-hidden>
                     {feature.icon}
                   </span>
-                  <h3 className="mt-4 text-lg font-semibold text-[#333333]">
+                  <h3 className="mt-4 text-lg font-semibold text-white">
                     {feature.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#555555]">
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
                     {feature.description}
                   </p>
                 </article>
@@ -613,7 +621,7 @@ export function ClarivoLanding() {
                   className={cn(
                     "flex flex-col rounded-xl border p-6 sm:p-8",
                     plan.highlighted
-                      ? "border-[#F97316] bg-[#F97316]/5 shadow-[0_0_40px_rgba(249,115,22,0.12)]"
+                      ? "border-white/10 bg-[#111827] shadow-[0_0_40px_rgba(17,24,39,0.35)]"
                       : "border-[#e5e5e5] bg-[#f9f9f9]"
                   )}
                 >
@@ -622,28 +630,50 @@ export function ClarivoLanding() {
                       Most popular
                     </span>
                   ) : null}
-                  <h3 className="text-lg font-semibold text-[#333333]">
+                  <h3
+                    className={cn(
+                      "text-lg font-semibold",
+                      plan.highlighted ? "text-white" : "text-[#333333]"
+                    )}
+                  >
                     {plan.name}
                   </h3>
                   <p className="mt-2 flex items-baseline gap-1">
                     <span
                       className={cn(
                         displayFont,
-                        "text-4xl font-bold text-[#111111]"
+                        "text-4xl font-bold",
+                        plan.highlighted ? "text-white" : "text-[#111111]"
                       )}
                     >
                       {plan.price}
                     </span>
                     {plan.period ? (
-                      <span className="text-[#555555]">{plan.period}</span>
+                      <span
+                        className={cn(
+                          plan.highlighted ? "text-zinc-300" : "text-[#555555]"
+                        )}
+                      >
+                        {plan.period}
+                      </span>
                     ) : null}
                   </p>
-                  <p className="mt-3 text-sm text-[#555555]">{plan.description}</p>
+                  <p
+                    className={cn(
+                      "mt-3 text-sm",
+                      plan.highlighted ? "text-zinc-300" : "text-[#555555]"
+                    )}
+                  >
+                    {plan.description}
+                  </p>
                   <ul className="mt-6 flex-1 space-y-3">
                     {plan.features.map((feature) => (
                       <li
                         key={feature}
-                        className="flex items-start gap-2 text-sm text-[#555555]"
+                        className={cn(
+                          "flex items-start gap-2 text-sm",
+                          plan.highlighted ? "text-zinc-200" : "text-[#555555]"
+                        )}
                       >
                         <span className="mt-0.5 text-[#F97316]" aria-hidden>
                           ✓
@@ -658,59 +688,22 @@ export function ClarivoLanding() {
                       className={cn(
                         "mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors",
                         plan.highlighted
-                          ? "bg-[#F97316] text-white hover:bg-[#EA580C]"
+                          ? "bg-[#F97316] text-white hover:bg-[#111827]"
                           : "border border-[#e5e5e5] text-[#111111] hover:border-[#cccccc]"
                       )}
                     >
                       {plan.cta}
                     </Link>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={openDemo}
-                      className="mt-8 rounded-lg border border-[#e5e5e5] py-3 text-sm font-semibold text-[#111111] transition-colors hover:border-[#cccccc]"
+                    <Link
+                      href="/book-demo"
+                      className="mt-8 block rounded-lg border border-[#e5e5e5] py-3 text-center text-sm font-semibold text-[#111111] transition-colors hover:border-[#cccccc]"
                     >
                       {plan.cta}
-                    </button>
+                    </Link>
                   )}
                 </article>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Demo anchor + Final CTA */}
-        <section
-          id="demo"
-          className="border-t border-[#e5e5e5] bg-[#f5f5f5] px-4 py-24 sm:px-6 sm:py-32"
-        >
-          <div className="mx-auto max-w-3xl text-center">
-            <h2
-              className={cn(
-                displayFont,
-                "text-3xl font-bold text-[#111111] sm:text-5xl"
-              )}
-            >
-              Stop chasing contracts in inboxes and spreadsheets
-            </h2>
-            <p className="mx-auto mt-6 max-w-xl text-[#555555]">
-              Join teams who use Clarivo to extract, monitor, and protect every
-              pound committed across their vendor portfolio.
-            </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/signup"
-                className="w-full rounded-lg bg-[#F97316] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] sm:w-auto"
-              >
-                Start free trial
-              </Link>
-              <button
-                type="button"
-                onClick={openDemo}
-                className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-8 py-3.5 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
-              >
-                Demo with a human
-              </button>
             </div>
           </div>
         </section>
@@ -747,7 +740,6 @@ export function ClarivoLanding() {
         </div>
       </footer>
 
-      <BookDemoModal open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 }

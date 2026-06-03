@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/table";
 
 export function DashboardContractsSection() {
-  const { contractData, registerOpenContractPanel } = useDashboardData();
+  const { contractData, vendorIdByContractId, registerOpenContractPanel } =
+    useDashboardData();
   const { formatContractValue } = useCurrency();
   const [selected, setSelected] = useState<ContractData | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -81,7 +82,7 @@ export function DashboardContractsSection() {
                 description="Upload PDF contracts to see vendor details, values, and renewal dates here."
                 action={
                   <Link href="/dashboard/docs">
-                    <Button className="bg-[#F97316] text-white hover:bg-[#EA580C]">
+                    <Button className="bg-[#F97316] text-white hover:bg-[#111827]">
                       <Upload />
                       Go to Contracts
                     </Button>
@@ -109,13 +110,13 @@ export function DashboardContractsSection() {
                         Renewal
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        Type
-                      </TableHead>
-                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Health
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Status
+                      </TableHead>
+                      <TableHead className="h-10 min-w-[140px] text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Type
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -135,8 +136,31 @@ export function DashboardContractsSection() {
                           onClick={() => openContract(row)}
                           className="cursor-pointer border-zinc-100 text-[13px] transition-colors hover:bg-orange-50/40"
                         >
-                          <TableCell className="py-3.5 font-medium text-zinc-900">
-                            {row.vendor_name ?? "—"}
+                          <TableCell
+                            className="py-3.5 font-medium text-zinc-900"
+                            onClick={(e) => {
+                              const vendorId =
+                                vendorIdByContractId[row.contract_id];
+                              if (vendorId) e.stopPropagation();
+                            }}
+                          >
+                            {(() => {
+                              const vendorId =
+                                vendorIdByContractId[row.contract_id];
+                              const name = row.vendor_name ?? "—";
+                              if (vendorId && row.vendor_name) {
+                                return (
+                                  <Link
+                                    href={`/dashboard/vendors/${vendorId}`}
+                                    className="text-[#111827] hover:text-[#111827] hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {name}
+                                  </Link>
+                                );
+                              }
+                              return name;
+                            })()}
                           </TableCell>
                           <TableCell
                             className="py-3.5 tabular-nums"
@@ -150,7 +174,7 @@ export function DashboardContractsSection() {
                               <button
                                 type="button"
                                 onClick={(e) => handleAddValueClick(e, row)}
-                                className="text-sm font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+                                className="text-sm font-medium text-[#F97316] hover:text-[#111827] hover:underline"
                               >
                                 Add value
                               </button>
@@ -176,9 +200,6 @@ export function DashboardContractsSection() {
                           <TableCell className="py-3.5 text-zinc-600">
                             {formatDate(row.renewal_date)}
                           </TableCell>
-                          <TableCell className="py-3.5 text-zinc-600">
-                            {row.contract_type ?? "—"}
-                          </TableCell>
                           <TableCell
                             className="py-3.5"
                             onClick={(e) => e.stopPropagation()}
@@ -187,6 +208,14 @@ export function DashboardContractsSection() {
                           </TableCell>
                           <TableCell className="py-3.5">
                             <ContractStatusBadge status={row.status} />
+                          </TableCell>
+                          <TableCell
+                            className="max-w-[220px] py-3.5 text-zinc-600"
+                            title={row.contract_type ?? undefined}
+                          >
+                            <span className="line-clamp-2">
+                              {row.contract_type ?? "—"}
+                            </span>
                           </TableCell>
                         </TableRow>
                       );

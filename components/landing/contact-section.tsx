@@ -74,7 +74,7 @@ export function ContactSection() {
             Or email us directly at{" "}
             <a
               href="mailto:hello@clarivo-tech.com"
-              className="font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+              className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
             >
               hello@clarivo-tech.com
             </a>
@@ -94,7 +94,7 @@ export function ContactSection() {
               <button
                 type="button"
                 onClick={() => setSubmitted(false)}
-                className="mt-6 text-sm font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+                className="mt-6 text-sm font-medium text-[#F97316] hover:text-[#111827] hover:underline"
               >
                 Send another message
               </button>
@@ -154,7 +154,7 @@ export function ContactSection() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-1 flex h-11 items-center justify-center gap-2 rounded-lg bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:opacity-60"
+                className="mt-1 flex h-11 items-center justify-center gap-2 rounded-lg bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#111827] disabled:opacity-60"
               >
                 {submitting ? (
                   <>

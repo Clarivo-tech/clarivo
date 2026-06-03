@@ -18,7 +18,7 @@ function YesNoBadge({ value }: { value: boolean | null }) {
       className={cn(
         "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
         value
-          ? "bg-orange-50 text-[#C2410C] ring-1 ring-orange-200/80"
+          ? "bg-orange-50 text-[#111827] ring-1 ring-orange-200/80"
           : "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80"
       )}
     >
@@ -39,7 +39,7 @@ function NoticeBadge({
         status === "OK" &&
           "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80",
         status === "Warning" &&
-          "bg-orange-50 text-[#C2410C] ring-1 ring-orange-200/80",
+          "bg-orange-50 text-[#111827] ring-1 ring-orange-200/80",
         status === "Action Required" &&
           "bg-red-50 text-red-700 ring-1 ring-red-200/80"
       )}
@@ -63,7 +63,7 @@ function HealthBadge({
         tier === "high" &&
           "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80",
         tier === "medium" &&
-          "bg-orange-50 text-[#EA580C] ring-1 ring-orange-200/80",
+          "bg-orange-50 text-[#111827] ring-1 ring-orange-200/80",
         tier === "low" && "bg-red-50 text-red-700 ring-1 ring-red-200/80"
       )}
     >

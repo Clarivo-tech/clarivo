@@ -16,6 +16,7 @@ export type Contract = {
   id: string;
   user_id: string;
   organisation_id?: string | null;
+  vendor_id?: string | null;
   file_name: string;
   file_url: string;
   storage_path?: string | null;

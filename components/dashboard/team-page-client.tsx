@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, UserPlus, Users } from "lucide-react";
+import { Loader2, Mail, Ticket, UserPlus, Users } from "lucide-react";
 import {
   cancelInvite,
   removeMember,
@@ -18,20 +18,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  INVITE_ROLE_LABELS,
-  ROLE_LABELS,
-  inviteRoleAccessDescription,
-  roleBadgeClass,
-} from "@/lib/team/roles";
+import { ROLE_LABELS, roleBadgeClass } from "@/lib/team/roles";
+import { formatDomainHint } from "@/lib/team/email-domain";
 import type {
-  InviteRole,
   OrgContext,
   OrganisationRole,
   TeamInvite,
   TeamMemberRow,
+  TeamPageLicenseInfo,
 } from "@/lib/team/types";
 import { cn } from "@/lib/utils";
+
+const teamCardClassName =
+  "border-zinc-200/80 bg-white text-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-foreground/10";
+
+const teamCardTitleClassName = "font-sans text-base font-semibold text-zinc-900";
 
 function formatDate(value: string): string {
   try {
@@ -53,35 +54,168 @@ function initials(first: string, last: string, email: string): string {
   return email.charAt(0).toUpperCase() || "?";
 }
 
-function planLabel(plan: string): string {
-  const p = plan.toLowerCase();
-  if (p === "pro") return "Pro";
-  if (p === "business") return "Business";
-  return "Trial";
+function LicenseSummaryCard({
+  licenses,
+  organisationName,
+}: {
+  licenses: TeamPageLicenseInfo;
+  organisationName: string;
+}) {
+  const usedPercent =
+    licenses.purchased > 0
+      ? Math.min(100, Math.round((licenses.utilized / licenses.purchased) * 100))
+      : 0;
+
+  return (
+    <Card className={teamCardClassName}>
+      <CardHeader className="border-b border-zinc-100 pb-4">
+        <div className="flex items-center gap-2">
+          <Ticket className="size-5 text-[#F97316]" />
+          <CardTitle className={teamCardTitleClassName}>Seat usage</CardTitle>
+        </div>
+        <CardDescription>
+          {organisationName} — each license gives one person access to your
+          organisation&apos;s contracts and data.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <div className="grid gap-6 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Purchased
+            </p>
+            <p className="mt-1 text-3xl font-semibold text-zinc-900">
+              {licenses.purchased}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Utilised
+            </p>
+            <p className="mt-1 text-3xl font-semibold text-[#111827]">
+              {licenses.utilized}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Active members and pending invites
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Available
+            </p>
+            <p className="mt-1 text-3xl font-semibold text-emerald-600">
+              {licenses.available}
+            </p>
+          </div>
+        </div>
+        <div className="mt-6">
+          <div className="mb-2 flex justify-between text-xs text-zinc-500">
+            <span>Licenses in use</span>
+            <span>
+              {licenses.utilized} / {licenses.purchased}
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className="h-full rounded-full bg-[#F97316] transition-all"
+              style={{ width: `${usedPercent}%` }}
+            />
+          </div>
+        </div>
+        {licenses.allowedEmailDomain && (
+          <p className="mt-4 text-sm text-zinc-600">
+            Team members must use a{" "}
+            <strong className="text-zinc-900">
+              {formatDomainHint(licenses.allowedEmailDomain)}
+            </strong>{" "}
+            work email to join and see your organisation&apos;s data.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
+  return (
+    <Card className="border-2 border-[#F97316]/40 bg-orange-50">
+      <CardHeader>
+        <CardTitle className={teamCardTitleClassName}>
+          Upgrade to Pro
+        </CardTitle>
+        <CardDescription>
+          {isOwner
+            ? "Your free trial has ended or you have not upgraded yet. Choose how many licenses you need, then invite colleagues on this page."
+            : "Ask your workspace owner to upgrade and purchase licenses before you can invite teammates."}
+        </CardDescription>
+      </CardHeader>
+      {isOwner && (
+        <CardContent>
+          <Button
+            render={<a href="/dashboard/upgrade" />}
+            className="bg-[#F97316] text-white hover:bg-[#111827]"
+          >
+            Choose licenses & upgrade
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  );
 }
 
 function InviteTeamMemberCard({
   context,
+  licenses,
   canManage,
 }: {
   context: OrgContext;
+  licenses: TeamPageLicenseInfo;
   canManage: boolean;
 }) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<InviteRole>("member");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
   const [invitePending, startInviteTransition] = useTransition();
 
+  const domainHint = formatDomainHint(licenses.allowedEmailDomain);
+  const placeholder = licenses.allowedEmailDomain
+    ? `colleague@${licenses.allowedEmailDomain}`
+    : "colleague@company.com";
+
   if (!canManage) {
     return (
-      <Card className="border-zinc-200 bg-zinc-50">
+      <Card className={teamCardClassName}>
         <CardHeader>
-          <CardTitle className="text-base">Invite teammates</CardTitle>
+          <CardTitle className={teamCardTitleClassName}>Invite teammates</CardTitle>
           <CardDescription>
             Only owners and admins can send invitations. Ask your workspace admin
             to invite colleagues.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!licenses.isSubscribed) {
+    return null;
+  }
+
+  if (licenses.available <= 0) {
+    return (
+      <Card className={teamCardClassName}>
+        <CardHeader>
+          <CardTitle className={teamCardTitleClassName}>No licenses available</CardTitle>
+          <CardDescription>
+            All {licenses.purchased} licenses are in use. Cancel a pending invite
+            or{" "}
+            <a
+              href="/dashboard/upgrade"
+              className="font-medium text-[#F97316] hover:underline"
+            >
+              purchase more licenses
+            </a>{" "}
+            to invite someone else.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -96,7 +230,7 @@ function InviteTeamMemberCard({
         const res = await fetch("/api/invite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+          body: JSON.stringify({ email: inviteEmail.trim(), role: "member" }),
         });
         const payload = (await res.json()) as { error?: string };
         if (!res.ok) {
@@ -104,7 +238,7 @@ function InviteTeamMemberCard({
           return;
         }
         setInviteSuccess(
-          `Invitation sent to ${inviteEmail.trim()}. They can sign up via the link in their email.`
+          `Invitation sent to ${inviteEmail.trim()}. They will receive an email with a link to join ${context.organisationName}.`
         );
         setInviteEmail("");
         router.refresh();
@@ -119,53 +253,30 @@ function InviteTeamMemberCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <UserPlus className="size-5 text-[#F97316]" />
-          <CardTitle>Invite team member</CardTitle>
+          <CardTitle className={teamCardTitleClassName}>Invite team member</CardTitle>
         </div>
         <CardDescription>
-          Email an invite link so they can sign up and join{" "}
-          <strong>{context.organisationName}</strong>
+          You have <strong>{licenses.available}</strong> unused license
+          {licenses.available === 1 ? "" : "s"}. Send an invite link to a
+          colleague with a {domainHint} email address.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="invite-email" className="text-sm font-medium">
-              Email address
-            </label>
-            <Input
-              id="invite-email"
-              type="email"
-              required
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              disabled={invitePending}
-              className="h-11"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 sm:min-w-[160px]">
-            <label htmlFor="invite-role" className="text-sm font-medium">
-              Role
-            </label>
-            <select
-              id="invite-role"
-              className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as InviteRole)}
-              disabled={invitePending}
-            >
-              {(["admin", "member", "viewer"] as const).map((r) => (
-                <option key={r} value={r}>
-                  {INVITE_ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="invite-email" className="text-sm font-medium">
+            Work email address
+          </label>
+          <Input
+            id="invite-email"
+            type="email"
+            required
+            placeholder={placeholder}
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            disabled={invitePending}
+            className="h-11"
+          />
         </div>
-        <p className="text-sm text-zinc-600">
-          <strong>{INVITE_ROLE_LABELS[inviteRole]}:</strong>{" "}
-          {inviteRoleAccessDescription(inviteRole)}
-        </p>
         {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
         {inviteSuccess && (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -175,7 +286,7 @@ function InviteTeamMemberCard({
         <Button
           type="button"
           disabled={invitePending || !inviteEmail.trim()}
-          className="h-11 w-full bg-[#F97316] text-white hover:bg-[#EA580C] sm:w-fit sm:min-w-[200px]"
+          className="h-11 w-full bg-[#F97316] text-white hover:bg-[#111827] sm:w-fit sm:min-w-[200px]"
           onClick={handleSendInvite}
         >
           {invitePending ? (
@@ -186,14 +297,10 @@ function InviteTeamMemberCard({
           ) : (
             <>
               <Mail className="size-4" />
-              Send Invite
+              Send invite link
             </>
           )}
         </Button>
-        <p className="text-xs text-zinc-500">
-          Each additional team member requires a separate licence. You will be
-          contacted to arrange payment.
-        </p>
       </CardContent>
     </Card>
   );
@@ -226,19 +333,20 @@ function SetupWorkspaceCard() {
   }
 
   return (
-    <Card className="border-2 border-[#F97316]/30 bg-[#111827] text-white">
+    <Card className="border-2 border-[#F97316]/30 bg-white">
       <CardHeader>
-        <CardTitle className="text-white">Set up your workspace</CardTitle>
-        <CardDescription className="text-zinc-400">
-          Create your organisation workspace before inviting teammates.
+        <CardTitle className={teamCardTitleClassName}>Set up your workspace</CardTitle>
+        <CardDescription>
+          Create your organisation workspace before managing licenses and
+          inviting teammates.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <Button
           type="button"
           disabled={pending}
-          className="w-fit bg-[#F97316] text-white hover:bg-[#EA580C]"
+          className="w-fit bg-[#F97316] text-white hover:bg-[#111827]"
           onClick={handleSetup}
         >
           {pending ? (
@@ -247,7 +355,7 @@ function SetupWorkspaceCard() {
               Setting up…
             </>
           ) : (
-            "Create workspace & invite members"
+            "Create workspace"
           )}
         </Button>
       </CardContent>
@@ -259,18 +367,16 @@ export function TeamPageClient({
   context,
   members,
   invites,
-  seatsUsed,
+  licenses,
   canManage,
   currentUserId,
-  adminConfigured = true,
 }: {
   context: OrgContext | null;
   members: TeamMemberRow[];
   invites: TeamInvite[];
-  seatsUsed: number;
+  licenses: TeamPageLicenseInfo;
   canManage: boolean;
   currentUserId: string;
-  adminConfigured?: boolean;
 }) {
   const [actionPending, startActionTransition] = useTransition();
 
@@ -278,122 +384,120 @@ export function TeamPageClient({
     return <SetupWorkspaceCard />;
   }
 
+  const isOwner = context.role === "owner";
+
   return (
     <div className="flex flex-col gap-8">
-      {!adminConfigured && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Add <code className="rounded bg-amber-100 px-1">SUPABASE_SERVICE_ROLE_KEY</code> to{" "}
-          <code className="rounded bg-amber-100 px-1">.env.local</code> and restart the dev
-          server for invite emails and full team admin features. The page works without it for
-          basic invites if you are the workspace owner.
-        </div>
-      )}
-      <InviteTeamMemberCard context={context} canManage={canManage} />
+      <LicenseSummaryCard
+        licenses={licenses}
+        organisationName={context.organisationName}
+      />
 
-      {canManage && (
-        <Card className="border-zinc-800 bg-[#111827] text-white shadow-lg">
-          <CardHeader className="border-b border-white/10 pb-4">
+      {!licenses.isSubscribed && (
+        <UpgradeCtaCard isOwner={isOwner} />
+      )}
+
+      <InviteTeamMemberCard
+        context={context}
+        licenses={licenses}
+        canManage={canManage}
+      />
+
+      {canManage && invites.length > 0 && (
+        <Card className={teamCardClassName}>
+          <CardHeader className="border-b border-zinc-100 pb-4">
             <div className="flex items-center gap-2">
               <Mail className="size-5 text-[#F97316]" />
-              <CardTitle className="text-lg text-white">
+              <CardTitle className={teamCardTitleClassName}>
                 Pending invites
                 {invites.length > 0 ? ` (${invites.length})` : ""}
               </CardTitle>
             </div>
-            {invites.length === 0 && (
-              <CardDescription className="text-zinc-400">
-                No outstanding invitations. Use the form above to invite someone.
-              </CardDescription>
-            )}
+            <CardDescription>
+              Invited colleagues have seven days to accept via the link in their
+              email.
+            </CardDescription>
           </CardHeader>
-          {invites.length > 0 && (
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 text-zinc-400">
-                      <th className="px-6 py-3 font-medium">Email</th>
-                      <th className="px-4 py-3 font-medium">Role</th>
-                      <th className="px-4 py-3 font-medium">Sent</th>
-                      <th className="px-4 py-3 font-medium">Expires</th>
-                      <th className="px-6 py-3 font-medium text-right">
-                        Actions
-                      </th>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-zinc-500">
+                    <th className="px-6 py-3 font-medium">Email</th>
+                    <th className="px-4 py-3 font-medium">Sent</th>
+                    <th className="px-4 py-3 font-medium">Expires</th>
+                    <th className="px-6 py-3 font-medium text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invites.map((invite) => (
+                    <tr
+                      key={invite.id}
+                      className="border-b border-zinc-100 last:border-0"
+                    >
+                      <td className="px-6 py-4 text-zinc-900">{invite.email}</td>
+                      <td className="px-4 py-4 text-zinc-600">
+                        {formatDate(invite.created_at)}
+                      </td>
+                      <td className="px-4 py-4 text-zinc-600">
+                        {formatDate(invite.expires_at)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={actionPending}
+                            onClick={() => {
+                              startActionTransition(async () => {
+                                await resendInvite(invite.id);
+                              });
+                            }}
+                          >
+                            Resend
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={actionPending}
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              startActionTransition(async () => {
+                                await cancelInvite(invite.id);
+                              });
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {invites.map((invite) => (
-                      <tr
-                        key={invite.id}
-                        className="border-b border-white/5 last:border-0"
-                      >
-                        <td className="px-6 py-4 text-white">{invite.email}</td>
-                        <td className="px-4 py-4 capitalize text-zinc-300">
-                          {invite.role}
-                        </td>
-                        <td className="px-4 py-4 text-zinc-400">
-                          {formatDate(invite.created_at)}
-                        </td>
-                        <td className="px-4 py-4 text-zinc-400">
-                          {formatDate(invite.expires_at)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={actionPending}
-                              className="border-white/10 bg-transparent text-white hover:bg-white/10"
-                              onClick={() => {
-                                startActionTransition(async () => {
-                                  await resendInvite(invite.id);
-                                });
-                              }}
-                            >
-                              Resend
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={actionPending}
-                              className="border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10"
-                              onClick={() => {
-                                startActionTransition(async () => {
-                                  await cancelInvite(invite.id);
-                                });
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
         </Card>
       )}
 
-      <Card className="border-zinc-800 bg-[#111827] text-white shadow-lg">
-        <CardHeader className="border-b border-white/10 pb-4">
+      <Card className={teamCardClassName}>
+        <CardHeader className="border-b border-zinc-100 pb-4">
           <div className="flex items-center gap-2">
             <Users className="size-5 text-[#F97316]" />
-            <CardTitle className="text-lg text-white">Team members</CardTitle>
+            <CardTitle className={teamCardTitleClassName}>Team members</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-zinc-400">
+                <tr className="border-b border-zinc-100 text-zinc-500">
                   <th className="px-6 py-3 font-medium">Member</th>
                   <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
                   {canManage && (
                     <th className="px-6 py-3 font-medium text-right">Actions</th>
@@ -406,17 +510,17 @@ export function TeamPageClient({
                     [member.firstName, member.lastName]
                       .filter(Boolean)
                       .join(" ") || member.email;
-                  const isOwner = member.role === "owner";
+                  const isOwnerRow = member.role === "owner";
                   const isSelf = member.userId === currentUserId;
 
                   return (
                     <tr
                       key={member.id}
-                      className="border-b border-white/5 last:border-0"
+                      className="border-b border-zinc-100 last:border-0"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F97316]/20 text-sm font-semibold text-[#F97316]">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F97316]/15 text-sm font-semibold text-[#111827]">
                             {initials(
                               member.firstName,
                               member.lastName,
@@ -424,8 +528,8 @@ export function TeamPageClient({
                             )}
                           </div>
                           <div>
-                            <p className="font-medium text-white">{name}</p>
-                            <p className="text-zinc-400">{member.email}</p>
+                            <p className="font-medium text-zinc-900">{name}</p>
+                            <p className="text-zinc-500">{member.email}</p>
                           </div>
                         </div>
                       </td>
@@ -439,18 +543,15 @@ export function TeamPageClient({
                           {ROLE_LABELS[member.role]}
                         </span>
                       </td>
-                      <td className="px-4 py-4 capitalize text-zinc-300">
-                        {member.status}
-                      </td>
-                      <td className="px-4 py-4 text-zinc-400">
+                      <td className="px-4 py-4 text-zinc-600">
                         {formatDate(member.joinedAt)}
                       </td>
                       {canManage && (
                         <td className="px-6 py-4 text-right">
-                          {!isOwner && (
+                          {!isOwnerRow && (
                             <div className="flex flex-wrap items-center justify-end gap-2">
                               <select
-                                className="h-9 rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-white"
+                                className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900"
                                 value={member.role}
                                 disabled={actionPending || isSelf}
                                 onChange={(e) => {
@@ -470,7 +571,7 @@ export function TeamPageClient({
                                 variant="outline"
                                 size="sm"
                                 disabled={actionPending || isSelf}
-                                className="border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                className="border-red-200 text-red-600 hover:bg-red-50"
                                 onClick={() => {
                                   if (
                                     !confirm(`Remove ${name} from the team?`)
@@ -497,28 +598,17 @@ export function TeamPageClient({
         </CardContent>
       </Card>
 
-      <Card className="border-zinc-200 bg-zinc-50">
-        <CardContent className="flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-zinc-900">Seat usage</p>
-            <p className="mt-1 text-sm text-zinc-600">
-              Current seats used:{" "}
-              <strong>
-                {seatsUsed} of {context.seatLimit}
-              </strong>
-            </p>
-            <p className="text-sm text-zinc-600">
-              Plan: <strong>{planLabel(context.plan)}</strong>
-            </p>
-          </div>
+      {licenses.isSubscribed && licenses.available > 0 && isOwner && (
+        <p className="text-center text-sm text-zinc-500">
+          Need more licenses?{" "}
           <a
-            href="mailto:hello@clarivo-tech.com"
-            className="text-sm font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+            href="/dashboard/upgrade"
+            className="font-medium text-[#F97316] hover:underline"
           >
-            Need more seats? Contact us
+            Add licenses
           </a>
-        </CardContent>
-      </Card>
+        </p>
+      )}
     </div>
   );
 }

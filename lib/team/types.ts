@@ -50,4 +50,14 @@ export type OrgContext = {
   plan: string;
   seatLimit: number;
   role: OrganisationRole;
+  allowedEmailDomain: string | null;
+  isSubscribed: boolean;
+};
+
+export type TeamPageLicenseInfo = {
+  purchased: number;
+  utilized: number;
+  available: number;
+  allowedEmailDomain: string | null;
+  isSubscribed: boolean;
 };

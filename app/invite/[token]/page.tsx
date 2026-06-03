@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { formatDomainHint } from "@/lib/team/email-domain";
 import { getInviteByToken } from "@/lib/team/invite";
 import { InviteAcceptClient } from "@/components/invite/invite-accept-client";
 import {
@@ -48,7 +49,7 @@ export default async function InvitePage({
           <CardContent>
             <Button
               render={<Link href="/login" />}
-              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="bg-[#F97316] text-white hover:bg-[#111827]"
             >
               Go to sign in
             </Button>
@@ -75,6 +76,14 @@ export default async function InvitePage({
             <strong>{invite.inviterName}</strong> has invited you to join{" "}
             <strong>{invite.organisationName}</strong> as{" "}
             <strong>{roleLabel}</strong>.
+            {invite.allowedEmailDomain ? (
+              <>
+                {" "}
+                You must sign in or register with a{" "}
+                <strong>{formatDomainHint(invite.allowedEmailDomain)}</strong>{" "}
+                work email to access your organisation&apos;s contracts.
+              </>
+            ) : null}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,7 +105,7 @@ export default async function InvitePage({
                   render={
                     <Link href={`/login?redirect=/invite/${token}`} />
                   }
-                  className="w-full bg-[#F97316] text-white hover:bg-[#EA580C]"
+                  className="w-full bg-[#F97316] text-white hover:bg-[#111827]"
                 >
                   Log in to accept
                 </Button>

@@ -6,6 +6,7 @@ export type PublicInviteDetails = {
   role: string;
   organisationName: string;
   inviterName: string;
+  allowedEmailDomain: string | null;
   expiresAt: string;
   valid: boolean;
   error?: string;
@@ -30,7 +31,7 @@ export async function getInviteByToken(
 
   const { data: org } = await admin
     .from("organisations")
-    .select("name")
+    .select("name, allowed_email_domain")
     .eq("id", invite.organisation_id as string)
     .maybeSingle();
 
@@ -54,6 +55,7 @@ export async function getInviteByToken(
     role: invite.role as string,
     organisationName: (org?.name as string) ?? "your team",
     inviterName,
+    allowedEmailDomain: (org?.allowed_email_domain as string | null) ?? null,
     expiresAt: invite.expires_at as string,
     valid: !invalid,
     error: expired

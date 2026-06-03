@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const statusStyles = {
   expired: "border-red-200 bg-red-50 text-red-800",
-  warning: "border-orange-200 bg-orange-50 text-[#C2410C]",
+  warning: "border-orange-200 bg-orange-50 text-[#111827]",
   ok: "border-emerald-200 bg-emerald-50 text-emerald-800",
 } as const;
 

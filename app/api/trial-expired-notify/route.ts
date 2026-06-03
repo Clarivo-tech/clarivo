@@ -74,7 +74,12 @@ export async function POST(request: Request) {
   if (sentUserIds.length > 0) {
     await admin
       .from("user_preferences")
-      .update({ expiry_notified: true, updated_at: new Date().toISOString() })
+      .update({
+        expiry_notified: true,
+        subscription_status: "expired",
+        trial_used: true,
+        updated_at: new Date().toISOString(),
+      })
       .in("user_id", sentUserIds);
   }
 

@@ -15,8 +15,12 @@ type ChatMessage = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
-  content: "Ask about your contracts — value, renewals, vendors, and dates.",
+  content: "Ask about your contracts: value, renewals, vendors, and dates.",
 };
+
+/** Compact Ask Clarivo AI tile — matches sidebar navy */
+const COMPACT_CHAT_BG = "#111827";
+const COMPACT_CHAT_BORDER = "rgba(255,255,255,0.08)";
 
 type ContractChatProps = {
   variant?: "compact" | "full";
@@ -119,18 +123,26 @@ export function ContractChat({
     <section
       className={cn(
         compact
-          ? "rounded-xl border border-white/[0.08] bg-[#111827] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+          ? "rounded-xl border shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
           : "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
         compact && !expanded && "flex min-h-[220px] flex-col",
         compact && expanded && "col-span-full",
         className
       )}
+      style={
+        compact
+          ? {
+              backgroundColor: COMPACT_CHAT_BG,
+              borderColor: COMPACT_CHAT_BORDER,
+            }
+          : undefined
+      }
     >
       <div
         className={cn(
           "flex items-center justify-between gap-2 border-b",
           compact
-            ? "border-zinc-800 px-4 py-3"
+            ? "border-white/[0.08] px-4 py-3"
             : "border-zinc-100 px-6 py-5"
         )}
       >
@@ -138,10 +150,15 @@ export function ContractChat({
           <div
             className={cn(
               "flex shrink-0 items-center justify-center rounded-lg",
-              compact ? "size-8 bg-[#F97316]/20" : "size-9 bg-[#F97316]/10"
+              compact ? "size-8 bg-white/15" : "size-9 bg-[#F97316]/10"
             )}
           >
-            <MessageSquare className="size-4 text-[#F97316]" />
+            <MessageSquare
+              className={cn(
+                "size-4",
+                compact ? "text-white" : "text-[#F97316]"
+              )}
+            />
           </div>
           <div className="min-w-0">
             <h2
@@ -153,8 +170,8 @@ export function ContractChat({
               Ask Clarivo AI
             </h2>
             {compact ? (
-              <p className="mt-0.5 text-sm text-zinc-300">
-                Ask about your contracts — value, renewals, vendors, and dates.
+              <p className="mt-0.5 text-sm text-white/90">
+                Ask about your contracts: value, renewals, vendors, and dates.
               </p>
             ) : (
               <p className="mt-0.5 text-sm text-zinc-500">
@@ -169,7 +186,7 @@ export function ContractChat({
             variant="ghost"
             size="sm"
             onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 text-xs text-[#F97316] hover:bg-white/10 hover:text-[#FB923C]"
+            className="shrink-0 text-xs text-white/90 hover:bg-white/10 hover:text-white"
           >
             {expanded ? (
               <>
@@ -196,7 +213,7 @@ export function ContractChat({
           ref={scrollRef}
           className={cn(
             "flex flex-col gap-2 overflow-y-auto rounded-lg",
-            compact ? "bg-[#111827]" : "bg-zinc-50/80",
+            compact ? "" : "bg-zinc-50/80",
             compact
               ? isCompactView
                 ? "min-h-[176px] flex-1 max-h-[176px] px-3 py-2.5"
@@ -205,7 +222,7 @@ export function ContractChat({
           )}
         >
           {visibleMessages.length === 0 && isCompactView && (
-            <p className="text-[11px] leading-snug text-zinc-400">
+            <p className="text-[11px] leading-snug text-white">
               {WELCOME_MESSAGE.content}
             </p>
           )}
@@ -225,9 +242,11 @@ export function ContractChat({
                     : "max-w-[88%] px-4 py-3 text-[13px]",
                   msg.role === "user"
                     ? "rounded-xl rounded-br-sm bg-[#F97316] text-white"
-                    : compact
-                      ? "rounded-xl rounded-bl-sm bg-white text-[#111827]"
-                      : "rounded-xl rounded-bl-sm border border-zinc-200/80 bg-white text-zinc-700"
+                    : msg.id === "welcome" && compact
+                      ? "rounded-xl rounded-bl-sm bg-white/10 px-3 py-2 text-white"
+                      : compact
+                        ? "rounded-xl rounded-bl-sm bg-white text-[#111827]"
+                        : "rounded-xl rounded-bl-sm border border-zinc-200/80 bg-white text-zinc-700"
                 )}
               >
                 <p
@@ -279,7 +298,7 @@ export function ContractChat({
           className={cn(
             "flex items-center gap-2 rounded-lg",
             compact
-              ? "border border-zinc-800 bg-[#111827] p-1.5 focus-within:border-[#F97316]/50 focus-within:ring-2 focus-within:ring-[#F97316]/20"
+              ? "border border-white/[0.08] bg-[#111827] p-1.5 focus-within:border-[#F97316]/60 focus-within:ring-2 focus-within:ring-[#F97316]/25"
               : "gap-3 border border-zinc-200/80 bg-white p-2 focus-within:border-[#F97316]/40 focus-within:ring-2 focus-within:ring-[#F97316]/15"
           )}
         >
@@ -310,7 +329,7 @@ export function ContractChat({
             disabled={loading || !input.trim()}
             size="icon"
             className={cn(
-              "shrink-0 rounded-lg bg-[#F97316] text-white hover:bg-[#EA580C] disabled:opacity-40",
+              "shrink-0 rounded-lg bg-[#F97316] text-white hover:bg-[#111827] disabled:opacity-40",
               compact ? "size-8" : "size-10"
             )}
           >

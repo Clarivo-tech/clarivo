@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  emailMatchesOrganisationDomain,
+  formatDomainHint,
+} from "@/lib/team/email-domain";
 
 export async function POST(request: Request) {
   let body: {
@@ -24,9 +28,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: invite, error: inviteError } = await admin
     .from("invites")
-    .select(
-      "id, organisation_id, email, role, status, expires_at, organisation:organisations(name)"
-    )
+    .select("id, organisation_id, email, role, status, expires_at")
     .eq("token", token)
     .maybeSingle();
 
@@ -41,6 +43,24 @@ export async function POST(request: Request) {
   if (new Date(invite.expires_at as string).getTime() < Date.now()) {
     return NextResponse.json({ error: "This invite has expired." }, { status: 400 });
   }
+
+  const { data: org } = await admin
+    .from("organisations")
+    .select("plan, allowed_email_domain")
+    .eq("id", invite.organisation_id as string)
+    .maybeSingle();
+
+  const inviteEmail = (invite.email as string).toLowerCase();
+  if (!emailMatchesOrganisationDomain(inviteEmail, org?.allowed_email_domain)) {
+    return NextResponse.json(
+      {
+        error: `This invite requires a ${formatDomainHint(org?.allowed_email_domain)} work email.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  const orgIsPro = (org?.plan as string | undefined)?.toLowerCase() === "pro";
 
   const supabase = await createClient();
   const {
@@ -66,7 +86,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const inviteEmail = (invite.email as string).toLowerCase();
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: inviteEmail,
       password,
@@ -97,7 +116,7 @@ export async function POST(request: Request) {
         first_name: firstName,
         last_name: lastName,
         organisation_id: invite.organisation_id,
-        subscription_status: "trial",
+        subscription_status: orgIsPro ? "active" : "trial",
         updated_at: now,
       },
       { onConflict: "user_id" }
@@ -108,7 +127,6 @@ export async function POST(request: Request) {
   }
 
   const sessionEmail = (user.email ?? "").toLowerCase();
-  const inviteEmail = (invite.email as string).toLowerCase();
   if (sessionEmail !== inviteEmail) {
     return NextResponse.json(
       {
@@ -118,13 +136,18 @@ export async function POST(request: Request) {
     );
   }
 
-  await admin
-    .from("user_preferences")
-    .update({
-      organisation_id: invite.organisation_id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
+  const prefUpdate: {
+    organisation_id: string;
+    updated_at: string;
+    subscription_status?: string;
+  } = {
+    organisation_id: invite.organisation_id as string,
+    updated_at: new Date().toISOString(),
+  };
+  if (orgIsPro) {
+    prefUpdate.subscription_status = "active";
+  }
+  await admin.from("user_preferences").update(prefUpdate).eq("user_id", user.id);
 
   await completeInviteAccept(admin, invite, user.id);
   return NextResponse.json({ success: true });

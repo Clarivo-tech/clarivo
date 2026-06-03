@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -16,9 +16,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
+import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
+
+function RequiredLabel({
+  htmlFor,
+  children,
+}: {
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <label htmlFor={htmlFor} className="text-sm font-medium text-zinc-700">
+      {children}
+      <span className="text-[#F97316]" aria-hidden>
+        {" "}
+        *
+      </span>
+    </label>
+  );
+}
 
 export default function SignupPage() {
   const router = useRouter();
+  const [paidIntent, setPaidIntent] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,34 +50,138 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const intent = new URLSearchParams(window.location.search).get("intent");
+    setPaidIntent(intent !== "trial");
+  }, []);
+
+  const trimmed = {
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email.trim(),
+    company: company.trim(),
+    jobTitle: jobTitle.trim(),
+    contactNumber: contactNumber.trim(),
+    password,
+  };
+
+  const isFormComplete =
+    trimmed.firstName.length > 0 &&
+    trimmed.lastName.length > 0 &&
+    trimmed.email.length > 0 &&
+    trimmed.company.length > 0 &&
+    trimmed.jobTitle.length > 0 &&
+    trimmed.contactNumber.length > 0 &&
+    trimmed.password.length >= 8;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
+    if (!trimmed.firstName || !trimmed.lastName) {
+      setError("Please enter your first and last name.");
+      return;
+    }
+    if (!trimmed.email) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed.email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!trimmed.company) {
+      setError("Please enter your company name.");
+      return;
+    }
+    if (!trimmed.jobTitle) {
+      setError("Please enter your job title.");
+      return;
+    }
+    if (!trimmed.contactNumber) {
+      setError("Please enter your contact number.");
+      return;
+    }
+    if (trimmed.password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
 
     setLoading(true);
 
+    if (!paidIntent) {
+      try {
+        const eligibilityRes = await fetch("/api/auth/trial-eligibility", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed.email }),
+        });
+        const eligibility = (await eligibilityRes.json()) as {
+          eligible?: boolean;
+          message?: string;
+        };
+        if (!eligibility.eligible) {
+          setError(eligibility.message ?? TRIAL_EXPIRED_MESSAGE);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError("Could not verify signup eligibility. Please try again.");
+        setLoading(false);
+        return;
+      }
+    }
+
     const supabase = createClient();
     const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
+      email: trimmed.email,
+      password: trimmed.password,
       options: {
         data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          company: company.trim(),
-          job_title: jobTitle.trim(),
-          contact_number: contactNumber.trim(),
+          first_name: trimmed.firstName,
+          last_name: trimmed.lastName,
+          company: trimmed.company,
+          job_title: trimmed.jobTitle,
+          contact_number: trimmed.contactNumber,
         },
       },
     });
 
     if (authError) {
-      setError(authError.message);
+      const alreadyRegistered =
+        authError.message.toLowerCase().includes("already") ||
+        authError.message.toLowerCase().includes("registered");
+
+      if (alreadyRegistered) {
+        try {
+          const eligibilityRes = await fetch("/api/auth/trial-eligibility", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmed.email }),
+          });
+          const eligibility = (await eligibilityRes.json()) as {
+            eligible?: boolean;
+            message?: string;
+          };
+          if (!eligibility.eligible) {
+            setError(eligibility.message ?? TRIAL_EXPIRED_MESSAGE);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // fall through to generic message
+        }
+        if (paidIntent) {
+          const encodedEmail = encodeURIComponent(trimmed.email);
+          router.push(`/login?redirect=/dashboard/upgrade&email=${encodedEmail}`);
+          router.refresh();
+          setLoading(false);
+          return;
+        }
+        setError("An account with this email already exists. Please sign in.");
+      } else {
+        setError(authError.message);
+      }
       setLoading(false);
       return;
     }
@@ -68,37 +193,60 @@ export default function SignupPage() {
       return;
     }
 
+    const hasSession = Boolean(data.session);
+
     const now = new Date();
     const trialExpiresAt = new Date(now);
-    trialExpiresAt.setDate(trialExpiresAt.getDate() + 5);
+    // Temporary test window: expire trial 5 minutes after signup.
+    trialExpiresAt.setMinutes(trialExpiresAt.getMinutes() + 5);
 
-    const { error: prefError } = await supabase.from("user_preferences").upsert(
-      {
-        user_id: userId,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        company: company.trim(),
-        job_title: jobTitle.trim(),
-        contact_number: contactNumber.trim(),
-        trial_started_at: now.toISOString(),
-        trial_expires_at: trialExpiresAt.toISOString(),
-        subscription_status: "trial",
-        updated_at: now.toISOString(),
-      },
-      { onConflict: "user_id" }
-    );
+    const preferencesBase = {
+      user_id: userId,
+      first_name: trimmed.firstName,
+      last_name: trimmed.lastName,
+      company: trimmed.company,
+      job_title: trimmed.jobTitle,
+      trial_started_at: paidIntent ? null : now.toISOString(),
+      trial_expires_at: paidIntent ? null : trialExpiresAt.toISOString(),
+      subscription_status: paidIntent ? "expired" : "trial",
+      trial_used: true,
+      updated_at: now.toISOString(),
+    };
+
+    let prefError: { message: string } | null = null;
+
+    const withContact = await supabase
+      .from("user_preferences")
+      .upsert(
+        {
+          ...preferencesBase,
+          contact_number: trimmed.contactNumber,
+        },
+        { onConflict: "user_id" }
+      );
+
+    prefError = withContact.error;
+
+    if (
+      prefError?.message?.toLowerCase().includes("contact_number")
+    ) {
+      const fallback = await supabase
+        .from("user_preferences")
+        .upsert(preferencesBase, { onConflict: "user_id" });
+      prefError = fallback.error;
+    }
 
     if (prefError) {
-      setError(prefError.message);
-      setLoading(false);
-      return;
+      // Never block account creation on profile upsert failures.
+      // This can fail in edge auth states (no session yet), schema drift, or RLS timing.
+      console.error("[signup] user_preferences upsert failed:", prefError.message);
     }
 
     try {
       const orgResponse = await fetch("/api/auth/setup-organisation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company: company.trim() }),
+        body: JSON.stringify({ company: trimmed.company }),
       });
       if (!orgResponse.ok) {
         const orgPayload = (await orgResponse.json().catch(() => ({}))) as {
@@ -118,12 +266,12 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          company: company.trim(),
-          jobTitle: jobTitle.trim(),
-          trialExpiresAt: trialExpiresAt.toISOString(),
+          firstName: trimmed.firstName,
+          lastName: trimmed.lastName,
+          email: trimmed.email,
+          company: trimmed.company,
+          jobTitle: trimmed.jobTitle,
+          trialExpiresAt: paidIntent ? null : trialExpiresAt.toISOString(),
         }),
       });
 
@@ -139,6 +287,24 @@ export default function SignupPage() {
       }
     } catch (emailError) {
       console.error("[signup] welcome/founder email failed:", emailError);
+    }
+
+    if (paidIntent) {
+      if (hasSession) {
+        router.push(UPGRADE_PAGE_PATH);
+        router.refresh();
+        return;
+      }
+      router.push("/login?redirect=/dashboard/upgrade");
+      router.refresh();
+      return;
+    }
+
+    if (!hasSession) {
+      setLoading(false);
+      router.push("/login");
+      router.refresh();
+      return;
     }
 
     router.push("/dashboard");
@@ -166,9 +332,13 @@ export default function SignupPage() {
 
       <Card className="w-full max-w-md border-orange-100/80 shadow-xl shadow-orange-500/5">
         <CardHeader>
-          <CardTitle>Create your account</CardTitle>
+          <CardTitle className="font-sans text-xl font-bold tracking-tight text-zinc-900">
+            Create your account
+          </CardTitle>
           <CardDescription>
-            Start your 5-day free trial.
+            {paidIntent
+              ? "Create your account and continue to secure payment."
+              : "Start your 5-minute free trial."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -180,12 +350,7 @@ export default function SignupPage() {
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="firstName"
-                  className="text-sm font-medium text-zinc-700"
-                >
-                  First name
-                </label>
+                <RequiredLabel htmlFor="firstName">First name</RequiredLabel>
                 <Input
                   id="firstName"
                   type="text"
@@ -193,18 +358,15 @@ export default function SignupPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
+                  minLength={1}
+                  aria-required="true"
                   disabled={loading}
                   className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="lastName"
-                  className="text-sm font-medium text-zinc-700"
-                >
-                  Last name
-                </label>
+                <RequiredLabel htmlFor="lastName">Last name</RequiredLabel>
                 <Input
                   id="lastName"
                   type="text"
@@ -212,6 +374,8 @@ export default function SignupPage() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
+                  minLength={1}
+                  aria-required="true"
                   disabled={loading}
                   className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
                 />
@@ -219,9 +383,7 @@ export default function SignupPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-sm font-medium text-zinc-700">
-                Email
-              </label>
+              <RequiredLabel htmlFor="email">Email</RequiredLabel>
               <Input
                 id="email"
                 type="email"
@@ -229,6 +391,8 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                minLength={1}
+                aria-required="true"
                 autoComplete="email"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
@@ -236,12 +400,7 @@ export default function SignupPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="company"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Company
-              </label>
+              <RequiredLabel htmlFor="company">Company</RequiredLabel>
               <Input
                 id="company"
                 type="text"
@@ -249,18 +408,15 @@ export default function SignupPage() {
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 required
+                minLength={1}
+                aria-required="true"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="jobTitle"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Job title
-              </label>
+              <RequiredLabel htmlFor="jobTitle">Job title</RequiredLabel>
               <Input
                 id="jobTitle"
                 type="text"
@@ -268,18 +424,15 @@ export default function SignupPage() {
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
                 required
+                minLength={1}
+                aria-required="true"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="contactNumber"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Contact number
-              </label>
+              <RequiredLabel htmlFor="contactNumber">Contact number</RequiredLabel>
               <Input
                 id="contactNumber"
                 type="tel"
@@ -287,18 +440,15 @@ export default function SignupPage() {
                 value={contactNumber}
                 onChange={(e) => setContactNumber(e.target.value)}
                 required
+                minLength={1}
+                aria-required="true"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Password
-              </label>
+              <RequiredLabel htmlFor="password">Password</RequiredLabel>
               <Input
                 id="password"
                 type="password"
@@ -307,24 +457,29 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                aria-required="true"
                 autoComplete="new-password"
                 disabled={loading}
                 className="h-10 focus-visible:border-[#F97316] focus-visible:ring-[#F97316]/30"
               />
             </div>
 
+            <p className="text-xs text-zinc-500">
+              <span className="text-[#F97316]">*</span> All fields are required
+            </p>
+
             <Button
               type="submit"
-              disabled={loading}
-              className="mt-1 h-10 w-full bg-[#F97316] text-white hover:bg-[#EA580C]"
+              disabled={loading || !isFormComplete}
+              className="mt-1 h-10 w-full bg-[#F97316] text-white hover:bg-[#111827] disabled:opacity-50"
             >
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Starting trial…
+                  {paidIntent ? "Creating account…" : "Starting trial…"}
                 </>
               ) : (
-                "Start free trial"
+                paidIntent ? "Create account & continue to payment" : "Start free trial"
               )}
             </Button>
           </form>
@@ -332,8 +487,8 @@ export default function SignupPage() {
           <p className="mt-6 text-center text-sm text-zinc-500">
             Already have an account?{" "}
             <Link
-              href="/login"
-              className="font-medium text-[#F97316] hover:text-[#EA580C] hover:underline"
+              href={paidIntent ? "/login?redirect=/dashboard/upgrade" : "/login"}
+              className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
             >
               Sign in
             </Link>

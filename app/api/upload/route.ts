@@ -11,6 +11,7 @@ import {
   extractSimplePdfText,
   parseExtractedJson,
 } from "@/lib/extraction/pipeline";
+import { ensureVendorForContract } from "@/lib/vendors/ensure-vendor";
 import { resolveContractFileUrl } from "@/lib/storage/contract-file-url";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
 import type { Contract } from "@/lib/types/contracts";
@@ -141,6 +142,14 @@ async function runExtractionPipeline(
 
   if (insertError) {
     throw new Error(`insert_contract_data: ${insertError.message}`);
+  }
+
+  if (extracted.vendor_name?.trim()) {
+    await ensureVendorForContract(supabase, {
+      userId,
+      contractId,
+      vendorName: extracted.vendor_name,
+    });
   }
 
   console.log("[upload] step=update_contract_status", { contractId, userId });
@@ -298,6 +307,7 @@ export async function POST(request: Request) {
 
       revalidatePath("/dashboard");
       revalidatePath("/dashboard/docs");
+      revalidatePath("/dashboard/vendors");
 
       const completedContract = buildCompletedContract(contractId, user.id, {
         file_name: existing.file_name ?? "contract.pdf",
@@ -401,6 +411,7 @@ export async function POST(request: Request) {
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/docs");
+    revalidatePath("/dashboard/vendors");
 
     const completedContract = buildCompletedContract(contractId, user.id, {
       file_name: fileName,

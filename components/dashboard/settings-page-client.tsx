@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 import { updateBaseCurrency, updateDisplayName } from "@/app/dashboard/actions";
+import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencies";
 import type { SupportedCurrency } from "@/lib/currency/currencies";
 import { formatDate } from "@/lib/format";
@@ -44,7 +46,7 @@ function SettingsToast({
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 text-xs font-medium text-[#F97316] hover:text-[#EA580C]"
+        className="shrink-0 text-xs font-medium text-[#F97316] hover:text-[#111827]"
       >
         Dismiss
       </button>
@@ -52,53 +54,10 @@ function SettingsToast({
   );
 }
 
-function SettingsToggle({
-  id,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  id: string;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="min-w-0 flex-1">
-        <label htmlFor={id} className="text-sm font-medium text-zinc-900">
-          {label}
-        </label>
-        {description ? (
-          <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
-        ) : null}
-      </div>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onCheckedChange(!checked)}
-        className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40",
-          checked ? "bg-[#F97316]" : "bg-zinc-200"
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
-            checked && "translate-x-5"
-          )}
-        />
-      </button>
-    </div>
-  );
-}
-
 const cardClassName =
   "border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-foreground/10";
+
+const cardTitleClassName = "font-sans text-base font-semibold text-zinc-900";
 
 export function SettingsPageClient({
   email,
@@ -118,11 +77,6 @@ export function SettingsPageClient({
   const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const [profilePending, startProfileTransition] = useTransition();
   const [preferencesPending, startPreferencesTransition] = useTransition();
-
-  const [renewalEmailAlerts, setRenewalEmailAlerts] = useState(true);
-  const [reminder90, setReminder90] = useState(true);
-  const [reminder30, setReminder30] = useState(true);
-  const [weeklySummary, setWeeklySummary] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -158,10 +112,6 @@ export function SettingsPageClient({
     });
   }
 
-  function handleSaveNotifications() {
-    showToast("Notification preferences saved.");
-  }
-
   function handleConfirmDelete() {
     setDeleteDialogOpen(false);
     showToast("Please contact support to delete your account.");
@@ -179,13 +129,13 @@ export function SettingsPageClient({
             Settings
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
-            Manage your profile, notifications, and account.
+            Manage your profile, display preferences, and account.
           </p>
         </div>
 
         <Card className={cardClassName}>
           <CardHeader className="border-b border-zinc-100">
-            <CardTitle>Profile</CardTitle>
+            <CardTitle className={cardTitleClassName}>Profile</CardTitle>
             <CardDescription>
               Your name and email shown across Clarivo.
             </CardDescription>
@@ -250,7 +200,7 @@ export function SettingsPageClient({
               type="button"
               onClick={handleSaveProfile}
               disabled={profilePending}
-              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="bg-[#F97316] text-white hover:bg-[#111827]"
             >
               {profilePending ? (
                 <>
@@ -266,7 +216,9 @@ export function SettingsPageClient({
 
         <Card className={cardClassName}>
           <CardHeader className="border-b border-zinc-100">
-            <CardTitle>Display Preferences</CardTitle>
+            <CardTitle className={cardTitleClassName}>
+              Display Preferences
+            </CardTitle>
             <CardDescription>
               Choose how monetary values are shown across your dashboard.
             </CardDescription>
@@ -310,7 +262,7 @@ export function SettingsPageClient({
               type="button"
               onClick={handleSaveDisplayPreferences}
               disabled={preferencesPending}
-              className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+              className="bg-[#F97316] text-white hover:bg-[#111827]"
             >
               {preferencesPending ? (
                 <>
@@ -326,52 +278,7 @@ export function SettingsPageClient({
 
         <Card className={cardClassName}>
           <CardHeader className="border-b border-zinc-100">
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>
-              Choose how Clarivo keeps you informed about your contracts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="divide-y divide-zinc-100 pt-2">
-            <SettingsToggle
-              id="renewal-email-alerts"
-              label="Email alerts for contract renewals"
-              checked={renewalEmailAlerts}
-              onCheckedChange={setRenewalEmailAlerts}
-            />
-            <SettingsToggle
-              id="reminder-90"
-              label="Renewal reminder 90 days before"
-              checked={reminder90}
-              onCheckedChange={setReminder90}
-            />
-            <SettingsToggle
-              id="reminder-30"
-              label="Renewal reminder 30 days before"
-              checked={reminder30}
-              onCheckedChange={setReminder30}
-            />
-            <SettingsToggle
-              id="weekly-summary"
-              label="Weekly contract summary email"
-              checked={weeklySummary}
-              onCheckedChange={setWeeklySummary}
-            />
-          </CardContent>
-          <CardFooter className="border-t border-zinc-100 bg-transparent">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSaveNotifications}
-              className="border-orange-200 text-[#F97316] hover:bg-orange-50 hover:text-[#EA580C]"
-            >
-              Save preferences
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card className={cardClassName}>
-          <CardHeader className="border-b border-zinc-100">
-            <CardTitle>Account</CardTitle>
+            <CardTitle className={cardTitleClassName}>Account</CardTitle>
             <CardDescription>Your plan and membership details.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 pt-2">
@@ -388,7 +295,10 @@ export function SettingsPageClient({
               </div>
               <Button
                 type="button"
-                className="bg-[#F97316] text-white hover:bg-[#EA580C]"
+                render={
+                  <Link href={UPGRADE_PAGE_PATH} />
+                }
+                className="bg-[#F97316] text-white hover:bg-[#111827]"
               >
                 <Sparkles />
                 Upgrade to Pro
@@ -406,7 +316,9 @@ export function SettingsPageClient({
 
         <Card className={cn(cardClassName, "border-red-200/60")}>
           <CardHeader className="border-b border-red-100">
-            <CardTitle className="text-red-700">Danger Zone</CardTitle>
+            <CardTitle className={cn(cardTitleClassName, "text-red-700")}>
+              Danger Zone
+            </CardTitle>
             <CardDescription>
               Irreversible actions for your Clarivo account.
             </CardDescription>
@@ -430,7 +342,9 @@ export function SettingsPageClient({
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent showCloseButton className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete account?</DialogTitle>
+            <DialogTitle className="font-sans text-lg font-semibold">
+              Delete account?
+            </DialogTitle>
             <DialogDescription>
               Are you sure? This will permanently delete your account and all
               contract data.

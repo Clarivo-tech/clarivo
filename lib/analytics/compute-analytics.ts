@@ -68,6 +68,22 @@ export type AnalyticsTopStats = {
   contractCount: number;
 };
 
+export type AverageValueBreakdownItem = {
+  contractId: string;
+  vendorName: string;
+  originalValue: number;
+  originalCurrency: string | null;
+  convertedValue: number;
+};
+
+export type AverageValueBreakdown = {
+  items: AverageValueBreakdownItem[];
+  sumConverted: number;
+  valuedContractCount: number;
+  excludedWithoutValueCount: number;
+  average: number | null;
+};
+
 function safeParseDate(raw: string | null): Date | null {
   if (!raw) return null;
   try {
@@ -125,6 +141,39 @@ function resolveNoticeStatus(
   if (daysUntil < 0) return "Action Required";
   if (daysUntil <= 14) return "Warning";
   return "OK";
+}
+
+export function computeAverageValueBreakdown(
+  rows: ContractData[],
+  convertValue: (amount: number, currency: string | null) => number
+): AverageValueBreakdown {
+  const deduped = dedupeContractDataByContractId(rows);
+  const valued = deduped.filter((r) => !isMissingContractValue(r.contract_value));
+
+  const items: AverageValueBreakdownItem[] = valued.map((row) => {
+    const originalValue = Number(row.contract_value) || 0;
+    return {
+      contractId: row.contract_id,
+      vendorName: row.vendor_name?.trim() || "Unknown vendor",
+      originalValue,
+      originalCurrency: row.currency,
+      convertedValue: convertValue(originalValue, row.currency),
+    };
+  });
+
+  items.sort((a, b) => b.convertedValue - a.convertedValue);
+
+  const sumConverted = items.reduce((acc, item) => acc + item.convertedValue, 0);
+  const valuedContractCount = items.length;
+
+  return {
+    items,
+    sumConverted,
+    valuedContractCount,
+    excludedWithoutValueCount: deduped.length - valuedContractCount,
+    average:
+      valuedContractCount > 0 ? sumConverted / valuedContractCount : null,
+  };
 }
 
 export function computeAnalyticsTopStats(

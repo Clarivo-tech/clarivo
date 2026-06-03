@@ -1,6 +1,32 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
+import { extractEmailDomain } from "@/lib/team/email-domain";
 import type { OrgContext, OrganisationRole } from "@/lib/team/types";
+
+function mapOrgContext(
+  org: {
+    id: string;
+    name: string;
+    plan: string;
+    seat_limit: number;
+    owner_id: string | null;
+    allowed_email_domain?: string | null;
+  },
+  role: OrganisationRole,
+  subscriptionStatus: string | null | undefined
+): OrgContext {
+  return {
+    organisationId: org.id,
+    organisationName: org.name,
+    plan: org.plan ?? "trial",
+    seatLimit: Number(org.seat_limit) || 1,
+    role,
+    allowedEmailDomain: org.allowed_email_domain ?? null,
+    isSubscribed:
+      subscriptionStatus === "active" ||
+      (org.plan ?? "").toLowerCase() === "pro",
+  };
+}
 
 export async function getOrganisationId(
   supabase: SupabaseClient,
@@ -59,13 +85,18 @@ export async function getOrgContext(
   const organisationId = await getOrganisationId(supabase, userId);
   if (!organisationId) return null;
 
-  const [orgResult, role] = await Promise.all([
+  const [orgResult, role, prefResult] = await Promise.all([
     supabase
       .from("organisations")
-      .select("id, name, plan, seat_limit, owner_id")
+      .select("id, name, plan, seat_limit, owner_id, allowed_email_domain")
       .eq("id", organisationId)
       .maybeSingle(),
     getUserRole(supabase, userId, organisationId),
+    supabase
+      .from("user_preferences")
+      .select("subscription_status")
+      .eq("user_id", userId)
+      .maybeSingle(),
   ]);
 
   if (!orgResult.data) return null;
@@ -78,13 +109,18 @@ export async function getOrgContext(
 
   if (!effectiveRole) return null;
 
-  return {
-    organisationId,
-    organisationName: orgResult.data.name as string,
-    plan: (orgResult.data.plan as string) ?? "trial",
-    seatLimit: Number(orgResult.data.seat_limit) || 1,
-    role: effectiveRole,
-  };
+  return mapOrgContext(
+    orgResult.data as {
+      id: string;
+      name: string;
+      plan: string;
+      seat_limit: number;
+      owner_id: string | null;
+      allowed_email_domain?: string | null;
+    },
+    effectiveRole,
+    prefResult.data?.subscription_status
+  );
 }
 
 /** Team page / invites: service role when available, else session client. */
@@ -116,7 +152,7 @@ async function getOrgContextWithClient(
 
   const { data: prefs } = await admin
     .from("user_preferences")
-    .select("organisation_id")
+    .select("organisation_id, subscription_status")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -137,7 +173,7 @@ async function getOrgContextWithClient(
 
   const { data: org } = await admin
     .from("organisations")
-    .select("id, name, plan, seat_limit, owner_id")
+    .select("id, name, plan, seat_limit, owner_id, allowed_email_domain")
     .eq("id", organisationId)
     .maybeSingle();
 
@@ -157,19 +193,25 @@ async function getOrgContextWithClient(
 
   if (!role) return null;
 
-  return {
-    organisationId,
-    organisationName: org.name as string,
-    plan: (org.plan as string) ?? "trial",
-    seatLimit: Number(org.seat_limit) || 1,
+  return mapOrgContext(
+    org as {
+      id: string;
+      name: string;
+      plan: string;
+      seat_limit: number;
+      owner_id: string | null;
+      allowed_email_domain?: string | null;
+    },
     role,
-  };
+    prefs?.subscription_status
+  );
 }
 
 export async function ensureUserOrganisation(
   supabase: SupabaseClient,
   userId: string,
-  companyName?: string | null
+  companyName?: string | null,
+  ownerEmail?: string | null
 ): Promise<{ organisationId?: string; error?: string }> {
   const existing = await getOrgContextForTeam(supabase, userId);
   if (existing) {
@@ -186,7 +228,8 @@ export async function ensureUserOrganisation(
   return setupOrganisationForUser(
     userId,
     companyName?.trim() || (prefs?.company as string | undefined)?.trim() || "My",
-    supabase
+    supabase,
+    ownerEmail
   );
 }
 

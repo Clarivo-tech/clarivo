@@ -1,7 +1,9 @@
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrgContext, TeamInvite, TeamMemberRow } from "@/lib/team/types";
+import { computeLicenseSummary } from "@/lib/team/licenses";
 import { ensureUserOrganisation, getOrgContextForTeam } from "@/lib/team/org";
+import type { TeamPageLicenseInfo } from "@/lib/team/types";
 
 export async function getTeamPageData(
   supabase: SupabaseClient,
@@ -12,9 +14,9 @@ export async function getTeamPageData(
   members: TeamMemberRow[];
   invites: TeamInvite[];
   seatsUsed: number;
-  adminConfigured: boolean;
+  licenses: TeamPageLicenseInfo;
 }> {
-  await ensureUserOrganisation(supabase, userId);
+  await ensureUserOrganisation(supabase, userId, undefined, currentUserEmail);
   const context = await getOrgContextForTeam(supabase, userId);
   if (!context) {
     return {
@@ -22,7 +24,13 @@ export async function getTeamPageData(
       members: [],
       invites: [],
       seatsUsed: 0,
-      adminConfigured: Boolean(tryCreateAdminClient()),
+      licenses: {
+        purchased: 1,
+        utilized: 0,
+        available: 1,
+        allowedEmailDomain: null,
+        isSubscribed: false,
+      },
     };
   }
 
@@ -93,15 +101,24 @@ export async function getTeamPageData(
     };
   });
 
-  const seatsUsed =
-    members.filter((m) => m.status === "active").length +
-    (invitesRaw ?? []).length;
+  const activeCount = members.filter((m) => m.status === "active").length;
+  const pendingCount = (invitesRaw ?? []).length;
+  const seatsUsed = activeCount + pendingCount;
+  const licenseNumbers = computeLicenseSummary(
+    activeCount,
+    pendingCount,
+    context.seatLimit
+  );
 
   return {
     context,
     members,
     invites: (invitesRaw ?? []) as TeamInvite[],
     seatsUsed,
-    adminConfigured: Boolean(admin),
+    licenses: {
+      ...licenseNumbers,
+      allowedEmailDomain: context.allowedEmailDomain,
+      isSubscribed: context.isSubscribed,
+    },
   };
 }

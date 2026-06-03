@@ -7,6 +7,7 @@ import {
   teamInviteFounderNotificationEmail,
 } from "@/lib/email/templates";
 import { getOrgContextForTeam } from "@/lib/team/org";
+import { validateTeamInvite } from "@/lib/team/validate-invite";
 import { canInviteMembers, emailRoleAccessDescription } from "@/lib/team/roles";
 import type { InviteRole } from "@/lib/team/types";
 import { getUserPreferences } from "@/lib/data/user-preferences";
@@ -30,14 +31,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const email = body.email?.trim().toLowerCase();
-  const role = body.role as InviteRole | undefined;
+  const rawEmail = body.email?.trim().toLowerCase();
+  const role = (body.role as InviteRole | undefined) ?? "member";
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
+  if (!rawEmail) {
+    return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 
-  if (!role || !INVITE_ROLES.includes(role)) {
+  if (!INVITE_ROLES.includes(role)) {
     return NextResponse.json({ error: "Invalid role." }, { status: 400 });
   }
 
@@ -48,6 +49,13 @@ export async function POST(request: Request) {
       { status: 403 }
     );
   }
+
+  const validation = await validateTeamInvite(auth.supabase, context, rawEmail);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+
+  const email = rawEmail;
 
   const prefs = await getUserPreferences(auth.supabase, auth.user.id);
   const inviterFirstName =

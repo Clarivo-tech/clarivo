@@ -1,7 +1,8 @@
 "use client";
 
-import { Calendar, Crown, Users, Wallet } from "lucide-react";
+import { Calendar, Crown, Users } from "lucide-react";
 import { useMemo } from "react";
+import { AverageContractValueCard } from "@/components/analytics/average-contract-value-card";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { computeAnalyticsTopStats } from "@/lib/analytics/compute-analytics";
@@ -20,11 +21,6 @@ export function AnalyticsStatsRow({
     [contractData, convert]
   );
 
-  const avgValueLabel =
-    stats.averageContractValue != null
-      ? formatCurrency(stats.averageContractValue, baseCurrency)
-      : "—";
-
   const durationLabel =
     stats.averageDurationMonths != null
       ? `${stats.averageDurationMonths.toFixed(1)} mo`
@@ -38,18 +34,7 @@ export function AnalyticsStatsRow({
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      <StatCard
-        title="Average Contract Value"
-        value={avgValueLabel}
-        footnote={
-          stats.contractCount > 0
-            ? `Across ${stats.contractCount} contract${stats.contractCount === 1 ? "" : "s"}`
-            : undefined
-        }
-        icon={Wallet}
-        iconColor="#F97316"
-        iconBgClassName="bg-[#F97316]/15"
-      />
+      <AverageContractValueCard contractData={contractData} />
       <StatCard
         title="Average Contract Duration"
         value={durationLabel}

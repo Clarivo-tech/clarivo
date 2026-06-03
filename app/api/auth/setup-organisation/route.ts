@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   const result = await setupOrganisationForUser(
     auth.user.id,
     company,
-    auth.supabase
+    auth.supabase,
+    auth.user.email
   );
 
   if (result.error) {
