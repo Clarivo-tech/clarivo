@@ -1,5 +1,5 @@
 import { FileStack } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getExchangeRates } from "@/lib/currency/exchange-rates";
 import {
   computeDashboardStats,
@@ -19,22 +19,17 @@ import { StatCard } from "@/components/dashboard/stat-card";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { dataSupabase, user, effectiveUserId } = await getDashboardSession();
 
   const [contracts, preferences, rates] = await Promise.all([
-    getContracts(supabase, user.id),
-    getUserPreferences(supabase, user.id),
+    getContracts(dataSupabase, effectiveUserId),
+    getUserPreferences(dataSupabase, effectiveUserId),
     getExchangeRates(),
   ]);
 
   const contractIds = contracts.map((c) => c.id);
   const contractData = await getContractDataByContractIds(
-    supabase,
+    dataSupabase,
     contractIds
   );
 

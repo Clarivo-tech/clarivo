@@ -1,23 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { SettingsPageClient } from "@/components/dashboard/settings-page-client";
 import { getUserPreferences } from "@/lib/data/user-preferences";
+import { ensureUserOrganisation, getOrgContextForTeam } from "@/lib/team/org";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { dataSupabase, user, effectiveUserId } = await getDashboardSession();
 
-  if (!user) return null;
+  const preferences = await getUserPreferences(dataSupabase, effectiveUserId);
 
-  const [displayName, preferences] = await Promise.all([
-    Promise.resolve(
-      (user.user_metadata?.display_name as string | undefined)?.trim() ?? ""
-    ),
-    getUserPreferences(supabase, user.id),
-  ]);
+  await ensureUserOrganisation(
+    dataSupabase,
+    effectiveUserId,
+    preferences.company,
+    user.email
+  );
+
+  const context = await getOrgContextForTeam(dataSupabase, effectiveUserId);
+
+  const displayName =
+    (user.user_metadata?.display_name as string | undefined)?.trim() ?? "";
 
   return (
     <SettingsPageClient
@@ -25,6 +28,10 @@ export default async function SettingsPage() {
       initialDisplayName={displayName}
       initialBaseCurrency={preferences.base_currency}
       memberSince={user.created_at}
+      plan={context?.plan ?? "trial"}
+      seatLimit={context?.seatLimit ?? 1}
+      isSubscribed={context?.isSubscribed ?? false}
+      isOwner={context?.role === "owner"}
     />
   );
 }

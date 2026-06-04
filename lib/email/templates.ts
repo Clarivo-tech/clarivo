@@ -56,13 +56,16 @@ export function welcomeEmail(
   return { subject, html };
 }
 
-export function trialReminderEmail(firstName: string): EmailTemplate {
+export function trialReminderEmail(params: {
+  firstName: string;
+  upgradeUrl: string;
+}): EmailTemplate {
   const subject = "Your Clarivo trial ends in 2 days";
   const html = shell(
     "Trial ending soon",
     "#F97316",
     `
-    <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${firstName}</strong>, your free trial ends in 2 days.</p>
+    <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${params.firstName}</strong>, your free trial ends in 2 days.</p>
     <p style="margin:0;color:#444;">Without upgrading, you'll lose access to:</p>
     <ul style="margin:10px 0 0 18px;color:#444;">
       <li>Contracts workspace</li>
@@ -70,22 +73,56 @@ export function trialReminderEmail(firstName: string): EmailTemplate {
       <li>Renewal alerts</li>
       <li>Analytics</li>
     </ul>
-    ${ctaButton("Upgrade to Pro — £99/month", "https://clarivo-tech.com/upgrade")}
+    ${ctaButton("Upgrade to Pro", params.upgradeUrl)}
   `
   );
   return { subject, html };
 }
 
-export function trialExpiredEmail(firstName: string): EmailTemplate {
-  const subject = "Your Clarivo trial has ended";
+export function trialExpiredEmail(params: {
+  firstName: string;
+  upgradeUrl: string;
+}): EmailTemplate {
+  const subject = "Your Clarivo trial has ended — upgrade to restore access";
   const html = shell(
     "Your trial has ended",
     "#111827",
     `
-    <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${firstName}</strong>, your 5-day free trial has expired.</p>
-    <p style="margin:0 0 8px 0;color:#444;">Upgrade now to regain full access to your contracts.</p>
-    <p style="margin:0 0 0 0;color:#444;">Your contracts are waiting — don't lose visibility.</p>
-    ${ctaButton("Upgrade to Pro — £99/month", "https://clarivo-tech.com/upgrade")}
+    <p style="margin:0 0 10px 0;font-size:16px;">Hi <strong>${params.firstName}</strong>, your Clarivo free trial has expired.</p>
+    <p style="margin:0 0 12px 0;color:#444;">Upgrade to Pro to regain full access to your contracts, vendors, analytics, and AI chat.</p>
+    <p style="margin:0 0 16px 0;color:#444;">Your data is still saved — pick up where you left off once you subscribe.</p>
+    ${ctaButton("Upgrade to Pro", params.upgradeUrl)}
+    <p style="margin:16px 0 0 0;color:#666;font-size:13px;">
+      Or sign in and go to Settings → Upgrade if you're already logged in.
+    </p>
+  `
+  );
+  return { subject, html };
+}
+
+export function founderTrialExpiredEmail(params: {
+  customerName: string;
+  email: string;
+  company: string;
+  jobTitle?: string | null;
+  trialExpiresAt: string;
+  upgradeUrl: string;
+}): EmailTemplate {
+  const subject = `⚠️ Clarivo trial expired — ${params.company}`;
+  const html = shell(
+    "Trial expired",
+    "#111827",
+    `
+    <p style="margin:0 0 16px 0;color:#444;">A user's free trial has ended and they have not upgraded yet.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Name</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.customerName}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px;border-bottom:1px solid #eee;"><a href="mailto:${params.email}" style="color:#F97316;">${params.email}</a></td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Company</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.company}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Job title</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.jobTitle?.trim() || "—"}</td></tr>
+      <tr><td style="padding:8px;color:#666;">Trial ended</td><td style="padding:8px;">${params.trialExpiresAt}</td></tr>
+    </table>
+    ${ctaButton("View upgrade page", params.upgradeUrl)}
+    ${ctaButton("Reply to customer", `mailto:${params.email}`)}
   `
   );
   return { subject, html };
@@ -155,7 +192,6 @@ export function demoBookingCustomerEmail(params: {
   company: string;
   dateLabel: string;
   timeLabel: string;
-  googleCalendarUrl: string;
 }): EmailTemplate {
   const subject = `Your Clarivo demo is confirmed - ${params.dateLabel} at ${params.timeLabel}`;
   const html = shell(
@@ -174,8 +210,7 @@ export function demoBookingCustomerEmail(params: {
       <li>How Clarivo can work for ${params.company}</li>
       <li>Q&A and next steps</li>
     </ul>
-    <p style="margin:14px 0 0 0;color:#444;">We'll send you a meeting link 30 minutes before your demo.</p>
-    ${ctaButton("Add to Google Calendar", params.googleCalendarUrl)}
+    <p style="margin:14px 0 0 0;color:#444;">You will receive a link to your demo shortly.</p>
     <p style="margin:14px 0 0 0;color:#444;">Need to reschedule? Email hello@clarivo-tech.com</p>
   `
   );
@@ -206,6 +241,91 @@ export function demoBookingAdminEmail(params: {
     ${ctaButton("Reply by email", `mailto:${params.email}`)}
   `
   );
+  return { subject, html };
+}
+
+export function subscriptionConfirmationEmail(params: {
+  firstName: string;
+  organisationName: string;
+  licenses: number;
+  monthlyTotalLabel: string;
+  teamUrl: string;
+  isAddLicenses: boolean;
+}): EmailTemplate {
+  const subject = params.isAddLicenses
+    ? "Your Clarivo license purchase is confirmed"
+    : "Your Clarivo Pro subscription is confirmed";
+
+  const headline = params.isAddLicenses
+    ? "License purchase confirmed"
+    : "Subscription confirmed";
+
+  const intro = params.isAddLicenses
+    ? `Your payment was successful. <strong>${params.organisationName}</strong> now has <strong>${params.licenses}</strong> team license${params.licenses === 1 ? "" : "s"}.`
+    : `Thank you for subscribing to Clarivo Pro. <strong>${params.organisationName}</strong> is now active with <strong>${params.licenses}</strong> license${params.licenses === 1 ? "" : "s"}.`;
+
+  const html = shell(
+    headline,
+    "#F97316",
+    `
+    <p style="margin:0 0 12px 0;font-size:16px;">Hi <strong>${params.firstName}</strong>,</p>
+    <p style="margin:0 0 16px 0;color:#444;">${intro}</p>
+    <div style="border:1px solid #eee;border-radius:10px;padding:14px 16px;background:#fafafa;">
+      <p style="margin:0 0 8px 0;color:#444;"><strong>Workspace:</strong> ${params.organisationName}</p>
+      <p style="margin:0 0 8px 0;color:#444;"><strong>Licenses:</strong> ${params.licenses}</p>
+      <p style="margin:0;color:#444;"><strong>Monthly total:</strong> ${params.monthlyTotalLabel}</p>
+    </div>
+    <p style="margin:16px 0 0 0;color:#444;">
+      You can invite teammates from My Team whenever you have available licenses.
+    </p>
+    ${ctaButton("Go to My Team", params.teamUrl)}
+    <p style="margin:16px 0 0 0;color:#666;font-size:13px;">
+      Questions about billing? Reply to this email or contact hello@clarivo-tech.com
+    </p>
+  `
+  );
+
+  return { subject, html };
+}
+
+export function founderSubscriptionPaymentEmail(params: {
+  customerName: string;
+  email: string;
+  company: string;
+  jobTitle?: string | null;
+  organisationName: string;
+  licenses: number;
+  monthlyTotalLabel: string;
+  paymentKind: "new_subscription" | "add_licenses";
+}): EmailTemplate {
+  const subject =
+    params.paymentKind === "add_licenses"
+      ? `💳 Clarivo license purchase — ${params.company || params.organisationName}`
+      : `💳 New Clarivo Pro subscription — ${params.company || params.organisationName}`;
+
+  const headline =
+    params.paymentKind === "add_licenses"
+      ? "License purchase confirmed"
+      : "New Pro subscription";
+
+  const html = shell(
+    headline,
+    "#111827",
+    `
+    <p style="margin:0 0 16px 0;color:#444;">A customer completed payment and their workspace was updated.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Name</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.customerName}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px;border-bottom:1px solid #eee;"><a href="mailto:${params.email}" style="color:#F97316;">${params.email}</a></td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Company</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.company || "—"}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Job title</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.jobTitle?.trim() || "—"}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Workspace</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.organisationName}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Licenses</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.licenses}</td></tr>
+      <tr><td style="padding:8px;color:#666;">Monthly total</td><td style="padding:8px;">${params.monthlyTotalLabel}</td></tr>
+    </table>
+    ${ctaButton("Reply to customer", `mailto:${params.email}`)}
+  `
+  );
+
   return { subject, html };
 }
 

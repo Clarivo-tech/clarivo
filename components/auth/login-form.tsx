@@ -56,6 +56,20 @@ export function LoginForm() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const safeRedirect =
+      redirectTo && redirectTo.startsWith("/") ? redirectTo : null;
+
+    if (
+      safeRedirect?.includes("payment=success") ||
+      safeRedirect?.includes("billing=success")
+    ) {
+      try {
+        await fetch("/api/billing/revolut/sync-latest", { method: "POST" });
+      } catch {
+        // Upgrade page also syncs server-side.
+      }
+    }
+
     if (user?.id) {
       const { data: prefs } = await supabase
         .from("user_preferences")
@@ -63,22 +77,22 @@ export function LoginForm() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (
+      const locked =
         prefs &&
         isAccountLocked({
           subscription_status: prefs.subscription_status,
           trial_expires_at: prefs.trial_expires_at,
           trial_started_at: prefs.trial_started_at,
           trial_used: prefs.trial_used,
-        })
-      ) {
-        window.location.assign("/dashboard/upgrade");
+        });
+
+      if (locked) {
+        window.location.assign(safeRedirect ?? "/dashboard/upgrade");
         return;
       }
     }
 
-    const destination =
-      redirectTo && redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+    const destination = safeRedirect ?? "/dashboard";
     router.push(destination);
     router.refresh();
   }

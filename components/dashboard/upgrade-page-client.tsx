@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink, Loader2, Users } from "lucide-react";
 import { PRICE_PER_LICENSE_GBP } from "@/lib/billing/constants";
 import { Button } from "@/components/ui/button";
@@ -21,23 +21,50 @@ export function UpgradePageClient({
   currentLicenses,
   isOwner,
   paymentSuccess,
+  addLicensesMode = false,
 }: {
   organisationName: string;
   currentLicenses: number;
   isOwner: boolean;
   paymentSuccess?: boolean;
+  addLicensesMode?: boolean;
 }) {
   const router = useRouter();
-  const [licenses, setLicenses] = useState(Math.max(1, currentLicenses));
+  const searchParams = useSearchParams();
+  const isAddFromUrl = searchParams.get("add") === "1";
+  const isAddMode = addLicensesMode || isAddFromUrl;
+  const isPaymentReturn = searchParams.get("payment") === "success";
+  const minLicenses = isAddMode ? currentLicenses + 1 : 1;
+  const [licenses, setLicenses] = useState(
+    isAddMode ? currentLicenses + 1 : Math.max(1, currentLicenses)
+  );
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const monthlyTotal = licenses * PRICE_PER_LICENSE_GBP;
+  const [isLocalDev, setIsLocalDev] = useState(false);
 
   useEffect(() => {
-    if (!paymentSuccess || !isOwner) return;
+    const host = window.location.hostname;
+    setIsLocalDev(host === "localhost" || host === "127.0.0.1");
+  }, []);
+
+  const additionalLicenses = isAddMode
+    ? Math.max(0, licenses - currentLicenses)
+    : licenses;
+  const monthlyTotal = licenses * PRICE_PER_LICENSE_GBP;
+  const priceLabel = PRICE_PER_LICENSE_GBP.toLocaleString("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  });
+  const totalLabel = monthlyTotal.toLocaleString("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  });
+
+  useEffect(() => {
+    if (!paymentSuccess || !isOwner || !isPaymentReturn) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -64,13 +91,7 @@ export function UpgradePageClient({
         }
 
         if (payload.status === "completed") {
-          setSuccessMessage(
-            `Payment confirmed. ${payload.licenses ?? licenses} license${
-              (payload.licenses ?? licenses) === 1 ? "" : "s"
-            } are now active.`
-          );
-          router.replace("/dashboard/team");
-          router.refresh();
+          window.location.assign("/dashboard/team");
           return;
         }
       } catch {
@@ -89,30 +110,58 @@ export function UpgradePageClient({
     return () => {
       cancelled = true;
     };
-  }, [paymentSuccess, isOwner, licenses, router]);
+  }, [paymentSuccess, isOwner, isPaymentReturn, licenses, router]);
 
   async function handleCheckout() {
     setError(null);
     setSuccessMessage(null);
+    setCheckoutUrl(null);
     setLoading(true);
 
     try {
-      const res = await fetch("/api/billing/revolut/create-order", {
+      const endpoint = isAddMode
+        ? "/api/billing/revolut/add-licenses"
+        : "/api/billing/revolut/create-subscription";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ licenses }),
+        credentials: "same-origin",
       });
-      const payload = (await res.json()) as {
+
+      let payload: {
         checkoutUrl?: string;
         error?: string;
-      };
+        mode?: string;
+        newTotal?: number;
+      } = {};
+      const text = await res.text();
+      if (text) {
+        try {
+          payload = JSON.parse(text) as typeof payload;
+        } catch {
+          setError("Unexpected server response. Please try again.");
+          return;
+        }
+      }
 
-      if (!res.ok || !payload.checkoutUrl) {
+      if (!res.ok) {
+        setError(payload.error ?? "Could not update billing.");
+        return;
+      }
+
+      if (payload.mode === "subscription_updated") {
+        router.push("/dashboard/team?billing=success");
+        return;
+      }
+
+      if (!payload.checkoutUrl) {
         setError(payload.error ?? "Could not start checkout.");
         return;
       }
 
-      window.location.assign(payload.checkoutUrl);
+      setCheckoutUrl(payload.checkoutUrl);
+      window.location.href = payload.checkoutUrl;
     } catch {
       setError("Could not start checkout. Please try again.");
     } finally {
@@ -145,17 +194,37 @@ export function UpgradePageClient({
         <div className="flex items-center gap-2">
           <Users className="size-5 text-[#F97316]" />
           <CardTitle className="font-sans text-xl font-bold text-zinc-900">
-            Choose your team licenses
+            {isAddMode ? "Add more licenses" : "Choose your team licenses"}
           </CardTitle>
         </div>
         <CardDescription>
-          Upgrade {organisationName} after your free trial. Each license lets one
-          person access your organisation&apos;s contracts and data. Invited
-          teammates must use the same company email domain as you.
+          {isAddMode ? (
+            <>
+              You currently have <strong>{currentLicenses}</strong> license
+              {currentLicenses === 1 ? "" : "s"} for {organisationName}. Choose
+              your new total to invite more teammates.
+            </>
+          ) : (
+            <>
+              Upgrade {organisationName} after your free trial. Each license lets one
+              person access your organisation&apos;s contracts and data. Invited
+              teammates must use the same company email domain as you.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {paymentSuccess ? (
+        {isLocalDev && !isPaymentReturn ? (
+          <Alert>
+            <AlertDescription>
+              Local testing: after payment, Revolut returns you to{" "}
+              <strong>clarivo-tech.com</strong> on My Team to confirm. Open My Team
+              on localhost and refresh — your licenses use the same account.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {isPaymentReturn ? (
           <Alert>
             <AlertDescription>
               {syncing
@@ -179,17 +248,22 @@ export function UpgradePageClient({
 
         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5">
           <label htmlFor="licenses" className="text-sm font-medium text-zinc-900">
-            Number of licenses
+            {isAddMode ? "New license total" : "Number of licenses"}
           </label>
           <div className="mt-2 flex items-center gap-3">
             <Input
               id="licenses"
               type="number"
-              min={1}
+              min={minLicenses}
               max={100}
               value={licenses}
               onChange={(e) =>
-                setLicenses(Math.max(1, Math.min(100, Number(e.target.value) || 1)))
+                setLicenses(
+                  Math.max(
+                    minLicenses,
+                    Math.min(100, Number(e.target.value) || minLicenses)
+                  )
+                )
               }
               className="h-11 max-w-[120px]"
               disabled={loading || syncing}
@@ -199,36 +273,74 @@ export function UpgradePageClient({
             </span>
           </div>
           <p className="mt-4 text-2xl font-bold text-zinc-900">
-            £{monthlyTotal.toLocaleString("en-GB")}
-            <span className="text-base font-normal text-zinc-500"> /month</span>
+            {totalLabel}
+            <span className="text-base font-normal text-zinc-500">
+              {isAddMode ? " /month (new total)" : " /month"}
+            </span>
           </p>
           <p className="mt-2 text-xs text-zinc-500">
-            Includes you as the first license. Unused licenses can be assigned
-            when you invite colleagues on My Team.
+            {isAddMode ? (
+              <>
+                Adding {additionalLicenses} license
+                {additionalLicenses === 1 ? "" : "s"} ({currentLicenses} → {licenses}).
+                Your Revolut monthly subscription updates to this seat count — future
+                invoices reflect the new total.
+              </>
+            ) : (
+              <>
+                Billed monthly via Revolut. Includes you as the first license.
+                Unused licenses can be assigned when you invite colleagues on My Team.
+              </>
+            )}
           </p>
         </div>
 
-        <Button
-          type="button"
-          disabled={loading || syncing}
-          onClick={() => void handleCheckout()}
-          className="h-11 w-full bg-[#F97316] text-white hover:bg-[#111827]"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" />
-              Starting secure checkout…
-            </>
-          ) : (
-            <>
-              Continue to secure payment
-              <ExternalLink className="size-4" />
-            </>
-          )}
-        </Button>
+        {!isPaymentReturn ? (
+          <button
+            type="button"
+            disabled={loading || syncing || (isAddMode && licenses <= currentLicenses)}
+            onClick={() => void handleCheckout()}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#F97316] px-4 text-sm font-medium text-white transition-colors hover:bg-[#111827] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Starting secure checkout…
+              </>
+            ) : (
+              <>
+                Continue to secure payment
+                <ExternalLink className="size-4" />
+              </>
+            )}
+          </button>
+        ) : null}
+
+        {checkoutUrl ? (
+          <p className="text-center text-sm text-zinc-600">
+            Not redirected?{" "}
+            <a
+              href={checkoutUrl}
+              className="font-medium text-[#F97316] hover:underline"
+            >
+              Open Revolut checkout
+            </a>
+          </p>
+        ) : null}
+
+        {isAddMode ? (
+          <Link
+            href="/dashboard/team"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50"
+          >
+            Back to My Team
+          </Link>
+        ) : null}
 
         <p className="text-center text-xs text-zinc-500">
-          You&apos;ll complete payment on your secure Revolut checkout page.
+          {isAddMode
+            ? "If checkout is required (e.g. first-time subscription setup), you\u2019ll go to Revolut\u2019s secure page. Otherwise your seat count updates immediately."
+            : "You\u2019ll set up a monthly subscription on Revolut\u2019s secure checkout page."}
           Questions?{" "}
           <a
             href="mailto:hello@clarivo-tech.com"

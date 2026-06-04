@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { AlertsPageClient } from "@/components/dashboard/alerts-page-client";
 import { getContractDataByContractIds, getContracts } from "@/lib/data/contracts";
 import { getUserPreferences } from "@/lib/data/user-preferences";
@@ -15,27 +15,22 @@ type ReminderRow = {
 };
 
 export default async function AlertsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
   const [contracts, preferences] = await Promise.all([
-    getContracts(supabase, user.id),
-    getUserPreferences(supabase, user.id),
+    getContracts(dataSupabase, effectiveUserId),
+    getUserPreferences(dataSupabase, effectiveUserId),
   ]);
 
   const contractData = await getContractDataByContractIds(
-    supabase,
+    dataSupabase,
     contracts.map((contract) => contract.id)
   );
 
-  const { data: reminders } = await supabase
+  const { data: reminders } = await dataSupabase
     .from("reminders")
     .select("id, contract_id, title, reminder_date, notes, dismissed")
-    .eq("user_id", user.id)
+    .eq("user_id", effectiveUserId)
     .eq("dismissed", false)
     .order("reminder_date", { ascending: true });
 

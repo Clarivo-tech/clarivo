@@ -10,6 +10,8 @@ import {
   HeartPulse,
   LayoutDashboard,
   Settings,
+  Shield,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import {
@@ -22,8 +24,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/docs", label: "Documents", icon: FileText, exact: false },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    exact: true,
+  },
   {
     href: "/dashboard/vendors",
     label: "Vendors",
@@ -37,9 +43,21 @@ const navItems = [
     exact: false,
   },
   {
+    href: "/dashboard/performance",
+    label: "Performance",
+    icon: TrendingUp,
+    exact: false,
+  },
+  {
     href: "/dashboard/contract-health",
-    label: "Contract Health",
+    label: "Health",
     icon: HeartPulse,
+    exact: false,
+  },
+  {
+    href: "/dashboard/alerts",
+    label: "Alerts & Reminders",
+    icon: Bell,
     exact: false,
   },
   {
@@ -49,9 +67,9 @@ const navItems = [
     exact: false,
   },
   {
-    href: "/dashboard/alerts",
-    label: "Alerts & Reminders",
-    icon: Bell,
+    href: "/dashboard/docs",
+    label: "Documents",
+    icon: FileText,
     exact: false,
   },
   {
@@ -62,17 +80,30 @@ const navItems = [
   },
 ];
 
-export function DashboardNav() {
+const platformAdminItem = {
+  href: "/dashboard/admin",
+  label: "Platform admin",
+  icon: Shield,
+  exact: false,
+};
+
+export function DashboardNav({
+  isPlatformAdmin = false,
+}: {
+  isPlatformAdmin?: boolean;
+}) {
   const pathname = usePathname();
+  const items = isPlatformAdmin ? [...navItems, platformAdminItem] : navItems;
 
   return (
     <SidebarGroup>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
-              : pathname.startsWith(item.href);
+              : pathname === item.href ||
+                pathname.startsWith(`${item.href}/`);
 
             return (
               <SidebarMenuItem key={item.href}>

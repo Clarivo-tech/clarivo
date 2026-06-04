@@ -26,6 +26,9 @@ export type Vendor = {
   notes: string | null;
   tags: string[] | null;
   auto_created: boolean;
+  performance_score: number | null;
+  last_reviewed_at: string | null;
+  performance_rag: "none" | "green" | "amber" | "red" | null;
   created_at: string;
   updated_at: string;
 };

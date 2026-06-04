@@ -1,4 +1,4 @@
-# Registers Clarivo production webhook with Revolut Merchant API.
+# Registers or updates Clarivo webhook with Revolut Merchant API.
 # Reads REVOLUT_MERCHANT_API_SECRET from .env.local in the project root.
 
 $ErrorActionPreference = "Stop"
@@ -37,15 +37,16 @@ if ($env:NEXT_PUBLIC_APP_URL) {
   $webhookUrl = "$base/api/webhooks/revolut"
 }
 
-$body = @{
-  url = $webhookUrl
-  events = @(
-    "ORDER_COMPLETED",
-    "ORDER_AUTHORISED",
-    "ORDER_PAYMENT_FAILED",
-    "ORDER_PAYMENT_DECLINED"
-  )
-} | ConvertTo-Json -Compress
+$events = @(
+  "ORDER_COMPLETED",
+  "ORDER_AUTHORISED",
+  "ORDER_PAYMENT_FAILED",
+  "ORDER_PAYMENT_DECLINED",
+  "SUBSCRIPTION_INITIATED",
+  "SUBSCRIPTION_OVERDUE",
+  "SUBSCRIPTION_CANCELLED",
+  "SUBSCRIPTION_FINISHED"
+)
 
 $headers = @{
   Authorization = "Bearer $secret"
@@ -53,14 +54,37 @@ $headers = @{
   "Content-Type" = "application/json"
 }
 
-Write-Host "Creating Revolut webhook for: $webhookUrl" -ForegroundColor Cyan
+Write-Host "Configuring Revolut webhook for: $webhookUrl" -ForegroundColor Cyan
+
+$list = Invoke-RestMethod `
+  -Method GET `
+  -Uri "https://merchant.revolut.com/api/1.0/webhooks" `
+  -Headers $headers
+
+$existing = $list | Where-Object { $_.url -eq $webhookUrl } | Select-Object -First 1
+
+$body = @{
+  url = $webhookUrl
+  events = $events
+} | ConvertTo-Json -Compress
 
 try {
-  $response = Invoke-RestMethod `
-    -Method POST `
-    -Uri "https://merchant.revolut.com/api/1.0/webhooks" `
-    -Headers $headers `
-    -Body $body
+  if ($existing) {
+    Write-Host "Updating existing webhook ($($existing.id))..." -ForegroundColor Cyan
+    $response = Invoke-RestMethod `
+      -Method PATCH `
+      -Uri "https://merchant.revolut.com/api/webhooks/$($existing.id)" `
+      -Headers $headers `
+      -Body $body
+  }
+  else {
+    Write-Host "Creating new webhook..." -ForegroundColor Cyan
+    $response = Invoke-RestMethod `
+      -Method POST `
+      -Uri "https://merchant.revolut.com/api/1.0/webhooks" `
+      -Headers $headers `
+      -Body $body
+  }
 }
 catch {
   $detail = $_.ErrorDetails.Message
@@ -71,10 +95,24 @@ catch {
 }
 
 Write-Host ""
-Write-Host "Webhook created successfully." -ForegroundColor Green
+Write-Host "Webhook configured successfully." -ForegroundColor Green
 Write-Host "Webhook ID: $($response.id)"
+Write-Host "Events: $($response.events -join ', ')"
 Write-Host ""
-Write-Host "Add this line to .env.local:" -ForegroundColor Yellow
-Write-Host "REVOLUT_WEBHOOK_SIGNING_SECRET=$($response.signing_secret)"
-Write-Host ""
-Write-Host "Then restart npm run dev (and add the same vars in Vercel)." -ForegroundColor Yellow
+
+$currentSigning = $null
+Get-Content $envFile -Encoding UTF8 | ForEach-Object {
+  if ($_ -match '^REVOLUT_WEBHOOK_SIGNING_SECRET\s*=\s*(.*)$') {
+    $currentSigning = $matches[1].Trim().Trim('"').Trim("'")
+  }
+}
+
+if ($response.signing_secret -and $response.signing_secret -ne $currentSigning) {
+  Write-Host "Update .env.local with the new signing secret:" -ForegroundColor Yellow
+  Write-Host "REVOLUT_WEBHOOK_SIGNING_SECRET=$($response.signing_secret)"
+  Write-Host ""
+  Write-Host "Also update this value in Vercel, then redeploy." -ForegroundColor Yellow
+}
+else {
+  Write-Host "Your existing REVOLUT_WEBHOOK_SIGNING_SECRET is still valid — no change needed." -ForegroundColor Green
+}

@@ -1,7 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { isAccountLocked, markTrialExpired } from "@/lib/trial/access";
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import {
+  EFFECTIVE_USER_HEADER,
+  IMPERSONATE_ADMIN_COOKIE,
+  IMPERSONATE_USER_COOKIE,
+} from "@/lib/admin/constants";
+import { bypassesTrialRestrictions, isPlatformAdmin } from "@/lib/admin/access";
 import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
+import { scheduleTrialExpiryEmails } from "@/lib/trial/schedule-trial-expiry-emails";
+import {
+  isWorkspaceLocked,
+  withFallbackTrialExpiry,
+} from "@/lib/trial/workspace-access";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/trial-expired"] as const;
 
@@ -33,52 +44,69 @@ function isTrialPaywallExempt(pathname: string): boolean {
   return (
     pathname === "/trial-expired" ||
     pathname === "/dashboard/upgrade" ||
-    pathname === "/api/upgrade"
+    pathname === "/api/upgrade" ||
+    pathname.startsWith("/dashboard/admin") ||
+    pathname.startsWith("/api/admin")
   );
+}
+
+function isPlatformAdminRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith("/dashboard/admin") ||
+    pathname.startsWith("/api/admin")
+  );
+}
+
+function readImpersonation(
+  request: NextRequest,
+  adminUserId: string,
+  adminEmail: string | undefined
+) {
+  if (!isPlatformAdmin(adminEmail)) {
+    return null;
+  }
+
+  const targetUserId = request.cookies
+    .get(IMPERSONATE_USER_COOKIE)
+    ?.value?.trim();
+  const cookieAdminId = request.cookies
+    .get(IMPERSONATE_ADMIN_COOKIE)
+    ?.value?.trim();
+
+  if (!targetUserId || cookieAdminId !== adminUserId) {
+    return null;
+  }
+
+  return targetUserId;
+}
+
+function applyEffectiveUserHeader(
+  request: NextRequest,
+  response: NextResponse,
+  effectiveUserId: string
+) {
+  const headers = new Headers(request.headers);
+  headers.set(EFFECTIVE_USER_HEADER, effectiveUserId);
+  return NextResponse.next({
+    request: { headers },
+    headers: response.headers,
+  });
 }
 
 function requiresTrialCheck(pathname: string): boolean {
   return isProtectedRoute(pathname) || pathname === "/trial-expired";
 }
 
-function withFallbackTrialExpiry(
-  prefs: {
-    trial_expires_at: string | null;
-    subscription_status: string | null;
-    trial_started_at: string | null;
-    trial_used: boolean | null;
-  },
-  userCreatedAt: string | undefined
-) {
-  if (prefs.trial_expires_at || !userCreatedAt) {
-    return prefs;
-  }
-
-  const status = (prefs.subscription_status ?? "").toLowerCase();
-  if (status === "active" || status === "expired") {
-    return prefs;
-  }
-
-  // Fallback for incomplete profile rows: derive trial expiry from auth user creation.
-  // Current test setup uses a 5-minute trial window.
-  const fallbackExpiry = new Date(
-    new Date(userCreatedAt).getTime() + 5 * 60 * 1000
-  ).toISOString();
-
-  return {
-    ...prefs,
-    trial_expires_at: fallbackExpiry,
-  };
-}
-
 function redirectLockedUserToUpgrade(request: NextRequest): NextResponse {
   const url = request.nextUrl.clone();
   url.pathname = "/dashboard/upgrade";
-  url.search = "";
+  if (!url.searchParams.has("payment")) {
+    url.search = "";
+  }
   return NextResponse.redirect(url);
 }
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -108,6 +136,25 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  const impersonatedUserIdEarly =
+    user && !isPlatformAdminRoute(pathname)
+      ? readImpersonation(request, user.id, user.email)
+      : null;
+
+  if (
+    user &&
+    bypassesTrialRestrictions(user.email, Boolean(impersonatedUserIdEarly))
+  ) {
+    if (impersonatedUserIdEarly) {
+      return applyEffectiveUserHeader(
+        request,
+        supabaseResponse,
+        impersonatedUserIdEarly
+      );
+    }
+    return supabaseResponse;
+  }
+
   if (
     user &&
     isPublicRoute(pathname) &&
@@ -116,16 +163,19 @@ export async function middleware(request: NextRequest) {
   ) {
     const { data: prefs } = await supabase
       .from("user_preferences")
-      .select("trial_expires_at, subscription_status, trial_started_at, trial_used")
+      .select(
+        "trial_expires_at, subscription_status, trial_started_at, trial_used, expiry_notified"
+      )
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (
       prefs &&
-      isAccountLocked({
-        ...withFallbackTrialExpiry(prefs, user.created_at),
-      })
+      (await isWorkspaceLocked(supabase, user.id, prefs, user.created_at))
     ) {
+      if (!prefs.expiry_notified) {
+        scheduleTrialExpiryEmails(event, request, user.id);
+      }
       return redirectLockedUserToUpgrade(request);
     }
 
@@ -134,9 +184,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (
+    user &&
+    isPlatformAdminRoute(pathname) &&
+    !isPlatformAdmin(user.email)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  const impersonatedUserId =
+    user && !isPlatformAdminRoute(pathname)
+      ? readImpersonation(request, user.id, user.email)
+      : null;
+
   if (!user && isProtectedRoute(pathname) && !isInviteAcceptApi(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    const returnPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    url.search = `redirect=${encodeURIComponent(returnPath)}`;
     return NextResponse.redirect(url);
   }
 
@@ -170,28 +237,85 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && requiresTrialCheck(pathname)) {
-    const { data: prefs, error } = await supabase
-      .from("user_preferences")
-      .select("trial_expires_at, subscription_status, trial_started_at, trial_used")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const trialUserId = impersonatedUserId ?? user.id;
+    let prefs: {
+      trial_expires_at: string | null;
+      subscription_status: string | null;
+      trial_started_at: string | null;
+      trial_used: boolean | null;
+      expiry_notified: boolean | null;
+    } | null = null;
+    let trialUserCreatedAt = user.created_at;
 
-    if (error) {
-      console.error("[middleware] preferences lookup:", error.message);
-      return supabaseResponse;
+    if (impersonatedUserId) {
+      const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (serviceRole && supabaseUrl) {
+        const admin = createClient(supabaseUrl, serviceRole, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data } = await admin
+          .from("user_preferences")
+          .select(
+            "trial_expires_at, subscription_status, trial_started_at, trial_used, expiry_notified"
+          )
+          .eq("user_id", impersonatedUserId)
+          .maybeSingle();
+        prefs = data;
+        const { data: targetAuth } = await admin.auth.admin.getUserById(
+          impersonatedUserId
+        );
+        trialUserCreatedAt = targetAuth.user?.created_at ?? trialUserCreatedAt;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .select(
+          "trial_expires_at, subscription_status, trial_started_at, trial_used, expiry_notified"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[middleware] preferences lookup:", error.message);
+      }
+      prefs = data;
     }
 
     if (prefs) {
-      const locked = isAccountLocked({
-        ...withFallbackTrialExpiry(prefs, user.created_at),
-      });
+      const trialDb =
+        impersonatedUserId &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY &&
+        process.env.NEXT_PUBLIC_SUPABASE_URL
+          ? createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL,
+              process.env.SUPABASE_SERVICE_ROLE_KEY,
+              {
+                auth: { autoRefreshToken: false, persistSession: false },
+              }
+            )
+          : supabase;
+
+      const locked = await isWorkspaceLocked(
+        trialDb,
+        trialUserId,
+        withFallbackTrialExpiry(prefs, trialUserCreatedAt),
+        trialUserCreatedAt
+      );
 
       if (locked) {
-        if (prefs.subscription_status === "trial") {
-          void markTrialExpired(supabase, user.id);
+        if (!prefs.expiry_notified && !impersonatedUserId) {
+          scheduleTrialExpiryEmails(event, request, trialUserId);
         }
 
         if (isTrialPaywallExempt(pathname)) {
+          if (impersonatedUserId) {
+            return applyEffectiveUserHeader(
+              request,
+              supabaseResponse,
+              impersonatedUserId
+            );
+          }
           return supabaseResponse;
         }
 
@@ -205,6 +329,14 @@ export async function middleware(request: NextRequest) {
         return redirectLockedUserToUpgrade(request);
       }
     }
+  }
+
+  if (impersonatedUserId) {
+    return applyEffectiveUserHeader(
+      request,
+      supabaseResponse,
+      impersonatedUserId
+    );
   }
 
   return supabaseResponse;

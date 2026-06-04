@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ADD_LICENSES_PAGE_PATH } from "@/lib/billing/payment-link";
 import { Loader2, Mail, Ticket, UserPlus, Users } from "lucide-react";
 import {
   cancelInvite,
@@ -152,7 +154,7 @@ function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
       {isOwner && (
         <CardContent>
           <Button
-            render={<a href="/dashboard/upgrade" />}
+            render={<Link href={ADD_LICENSES_PAGE_PATH} />}
             className="bg-[#F97316] text-white hover:bg-[#111827]"
           >
             Choose licenses & upgrade
@@ -167,10 +169,12 @@ function InviteTeamMemberCard({
   context,
   licenses,
   canManage,
+  isOwner,
 }: {
   context: OrgContext;
   licenses: TeamPageLicenseInfo;
   canManage: boolean;
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
@@ -208,16 +212,21 @@ function InviteTeamMemberCard({
           <CardTitle className={teamCardTitleClassName}>No licenses available</CardTitle>
           <CardDescription>
             All {licenses.purchased} licenses are in use. Cancel a pending invite
-            or{" "}
-            <a
-              href="/dashboard/upgrade"
-              className="font-medium text-[#F97316] hover:underline"
-            >
-              purchase more licenses
-            </a>{" "}
-            to invite someone else.
+            {isOwner
+              ? " or purchase more licenses to invite someone else."
+              : " or ask your workspace owner to purchase more licenses."}
           </CardDescription>
         </CardHeader>
+        {isOwner ? (
+          <CardContent>
+            <Link
+              href={ADD_LICENSES_PAGE_PATH}
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-[#F97316] px-4 text-sm font-medium text-white transition-colors hover:bg-[#111827]"
+            >
+              Purchase more licenses
+            </Link>
+          </CardContent>
+        ) : null}
       </Card>
     );
   }
@@ -401,6 +410,7 @@ export function TeamPageClient({
         context={context}
         licenses={licenses}
         canManage={canManage}
+        isOwner={isOwner}
       />
 
       {canManage && invites.length > 0 && (
@@ -601,12 +611,12 @@ export function TeamPageClient({
       {licenses.isSubscribed && licenses.available > 0 && isOwner && (
         <p className="text-center text-sm text-zinc-500">
           Need more licenses?{" "}
-          <a
-            href="/dashboard/upgrade"
+          <Link
+            href={ADD_LICENSES_PAGE_PATH}
             className="font-medium text-[#F97316] hover:underline"
           >
             Add licenses
-          </a>
+          </Link>
         </p>
       )}
     </div>

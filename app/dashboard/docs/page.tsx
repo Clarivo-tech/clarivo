@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getContracts } from "@/lib/data/contracts";
 import { DocsPageClient } from "@/components/dashboard/docs-page-client";
 import { getOrgContext } from "@/lib/team/org";
@@ -7,16 +7,11 @@ import { canUploadContracts } from "@/lib/team/roles";
 export const dynamic = "force-dynamic";
 
 export default async function DocsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
   const [contracts, orgContext] = await Promise.all([
-    getContracts(supabase, user.id, { includeInactive: true }),
-    getOrgContext(supabase, user.id),
+    getContracts(dataSupabase, effectiveUserId, { includeInactive: true }),
+    getOrgContext(dataSupabase, effectiveUserId),
   ]);
 
   const canUpload = orgContext

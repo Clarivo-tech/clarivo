@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 import { updateBaseCurrency, updateDisplayName } from "@/app/dashboard/actions";
-import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
+import {
+  ADD_LICENSES_PAGE_PATH,
+  UPGRADE_PAGE_PATH,
+} from "@/lib/billing/payment-link";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency/currencies";
 import type { SupportedCurrency } from "@/lib/currency/currencies";
 import { formatDate } from "@/lib/format";
@@ -59,17 +62,35 @@ const cardClassName =
 
 const cardTitleClassName = "font-sans text-base font-semibold text-zinc-900";
 
+function planDisplayName(plan: string, isSubscribed: boolean): string {
+  const normalized = plan.toLowerCase();
+  if (isSubscribed || normalized === "pro") return "Pro";
+  if (normalized === "trial") return "Trial";
+  return "Free";
+}
+
 export function SettingsPageClient({
   email,
   initialDisplayName,
   initialBaseCurrency,
   memberSince,
+  plan,
+  seatLimit,
+  isSubscribed,
+  isOwner,
 }: {
   email: string;
   initialDisplayName: string;
   initialBaseCurrency: SupportedCurrency;
   memberSince: string;
+  plan: string;
+  seatLimit: number;
+  isSubscribed: boolean;
+  isOwner: boolean;
 }) {
+  const onPro = isSubscribed || plan.toLowerCase() === "pro";
+  const planLabel = planDisplayName(plan, isSubscribed);
+
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [baseCurrency, setBaseCurrency] =
     useState<SupportedCurrency>(initialBaseCurrency);
@@ -287,22 +308,45 @@ export function SettingsPageClient({
                 <p className="text-sm font-medium text-zinc-500">
                   Current plan
                 </p>
-                <div className="mt-2">
-                  <Badge className="bg-zinc-100 text-zinc-700 hover:bg-zinc-100">
-                    Free
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge
+                    className={
+                      onPro
+                        ? "bg-[#F97316]/15 text-[#C2410C] hover:bg-[#F97316]/15"
+                        : planLabel === "Trial"
+                          ? "bg-amber-100 text-amber-900 hover:bg-amber-100"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
+                    }
+                  >
+                    {planLabel}
                   </Badge>
+                  {onPro ? (
+                    <span className="text-sm text-zinc-600">
+                      {seatLimit} license{seatLimit === 1 ? "" : "s"} / month
+                    </span>
+                  ) : null}
                 </div>
               </div>
-              <Button
-                type="button"
-                render={
-                  <Link href={UPGRADE_PAGE_PATH} />
-                }
-                className="bg-[#F97316] text-white hover:bg-[#111827]"
-              >
-                <Sparkles />
-                Upgrade to Pro
-              </Button>
+              {isOwner && !onPro ? (
+                <Button
+                  type="button"
+                  render={<Link href={UPGRADE_PAGE_PATH} />}
+                  className="bg-[#F97316] text-white hover:bg-[#111827]"
+                >
+                  <Sparkles />
+                  Upgrade to Pro
+                </Button>
+              ) : null}
+              {isOwner && onPro ? (
+                <Button
+                  type="button"
+                  render={<Link href={ADD_LICENSES_PAGE_PATH} />}
+                  variant="outline"
+                  className="border-zinc-200"
+                >
+                  Manage licenses
+                </Button>
+              ) : null}
             </div>
             <Separator />
             <div>

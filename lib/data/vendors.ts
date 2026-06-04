@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dedupeContractDataByContractId } from "@/lib/data/dedupe-contract-data";
 import { getContractData, getContracts } from "@/lib/data/contracts";
 import { getOrganisationId } from "@/lib/team/org";
+import { dedupeVendorsByName } from "@/lib/vendors/dedupe-vendors";
+import { syncVendorsFromContracts } from "@/lib/vendors/sync-from-contracts";
 import type { Contract, ContractData } from "@/lib/types/contracts";
 import type {
   Vendor,
@@ -11,7 +13,8 @@ import type {
   VendorStats,
 } from "@/lib/types/vendors";
 
-export async function getVendors(
+/** All vendor rows from the database (may include duplicate names). */
+export async function listVendorRows(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Vendor[]> {
@@ -20,17 +23,27 @@ export async function getVendors(
   let query = supabase.from("vendors").select("*").order("name");
 
   if (organisationId) {
-    query = query.eq("organisation_id", organisationId);
+    query = query.or(
+      `organisation_id.eq.${organisationId},and(organisation_id.is.null,user_id.eq.${userId})`
+    );
   } else {
     query = query.eq("user_id", userId);
   }
 
   const { data, error } = await query;
   if (error) {
-    console.error("[vendors] getVendors:", error.message);
+    console.error("[vendors] listVendorRows:", error.message);
     return [];
   }
   return (data ?? []) as Vendor[];
+}
+
+/** One row per normalized vendor name (for UI lists and dropdowns). */
+export async function getVendors(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Vendor[]> {
+  return dedupeVendorsByName(await listVendorRows(supabase, userId));
 }
 
 export async function getVendorById(
@@ -80,6 +93,8 @@ export async function getVendorPageData(
   supabase: SupabaseClient,
   userId: string
 ) {
+  await syncVendorsFromContracts(supabase, userId);
+
   const [vendors, contracts, allContractData] = await Promise.all([
     getVendors(supabase, userId),
     getContracts(supabase, userId),

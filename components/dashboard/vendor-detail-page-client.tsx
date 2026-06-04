@@ -51,6 +51,11 @@ import {
   relationshipHealthColor,
 } from "@/lib/vendors/relationship-health";
 import type { ContractData } from "@/lib/types/contracts";
+import { VendorPerformanceSection } from "@/components/performance/vendor-performance-section";
+import type {
+  PerformanceCriteria,
+  PerformanceReview,
+} from "@/lib/types/performance";
 import type {
   Vendor,
   VendorActivity,
@@ -93,6 +98,8 @@ export function VendorDetailPageClient({
   activity,
   totalSpend,
   baseCurrency,
+  performanceReviews,
+  performanceCriteria,
 }: {
   vendor: Vendor;
   linkedData: ContractData[];
@@ -101,6 +108,8 @@ export function VendorDetailPageClient({
   activity: VendorActivity[];
   totalSpend: number;
   baseCurrency: string;
+  performanceReviews: PerformanceReview[];
+  performanceCriteria: PerformanceCriteria[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
@@ -268,6 +277,14 @@ export function VendorDetailPageClient({
 
       {tab === "overview" ? (
         <div className="grid gap-6 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <VendorPerformanceSection
+              vendor={vendor}
+              reviews={performanceReviews}
+              criteria={performanceCriteria}
+            />
+          </div>
+
           <Card className={cardClass}>
             <CardHeader>
               <h2 className={cardTitle}>Company details</h2>

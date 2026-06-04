@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAppBaseUrl } from "@/lib/app-url";
 import { sendEmail } from "@/lib/email/send";
 import { trialReminderEmail } from "@/lib/email/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
     );
     if (userError || !userData.user?.email) continue;
 
-    const template = trialReminderEmail(row.first_name ?? "there");
+    const template = trialReminderEmail({
+      firstName: row.first_name ?? "there",
+      upgradeUrl: `${getAppBaseUrl()}/dashboard/upgrade`,
+    });
     await sendEmail({
       to: userData.user.email,
       subject: template.subject,

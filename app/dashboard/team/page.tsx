@@ -1,38 +1,54 @@
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
+import { syncLatestPendingPaymentForUser } from "@/lib/billing/sync-pending-payment";
 import { getTeamPageData } from "@/lib/team/data";
 import { canManageTeam } from "@/lib/team/roles";
 import { ensureUserOrganisation } from "@/lib/team/org";
 import { getUserPreferences } from "@/lib/data/user-preferences";
+import { TeamBillingSync } from "@/components/dashboard/team-billing-sync";
 import { TeamPageClient } from "@/components/dashboard/team-page-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { dataSupabase, user, effectiveUserId, impersonating } =
+    await getDashboardSession();
 
-  if (!user) return null;
-
-  const preferences = await getUserPreferences(supabase, user.id);
+  const preferences = await getUserPreferences(dataSupabase, effectiveUserId);
   await ensureUserOrganisation(
-    supabase,
-    user.id,
+    dataSupabase,
+    effectiveUserId,
     preferences.company,
     user.email
   );
 
-  const { context, members, invites, licenses } = await getTeamPageData(
-    supabase,
-    user.id,
+  let { context, members, invites, licenses } = await getTeamPageData(
+    dataSupabase,
+    effectiveUserId,
     user.email
   );
+
+  if (context?.role === "owner" && !impersonating) {
+    await syncLatestPendingPaymentForUser(
+      effectiveUserId,
+      context.organisationId,
+      user.email,
+      dataSupabase
+    );
+    ({ context, members, invites, licenses } = await getTeamPageData(
+      dataSupabase,
+      effectiveUserId,
+      user.email
+    ));
+  }
 
   const canManage = context ? canManageTeam(context.role) : false;
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">
+      <Suspense fallback={null}>
+        <TeamBillingSync isOwner={context?.role === "owner"} />
+      </Suspense>
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
           My Team
@@ -49,7 +65,7 @@ export default async function TeamPage() {
         invites={invites}
         licenses={licenses}
         canManage={canManage}
-        currentUserId={user.id}
+        currentUserId={effectiveUserId}
       />
     </div>
   );

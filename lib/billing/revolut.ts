@@ -1,4 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import {
+  getAppBaseUrl,
+  getRevolutRedirectBaseUrl,
+} from "@/lib/app-url";
+
+export { getAppBaseUrl, getRevolutRedirectBaseUrl };
 
 export const REVOLUT_MERCHANT_API_BASE = "https://merchant.revolut.com";
 export const REVOLUT_API_VERSION = process.env.REVOLUT_API_VERSION ?? "2024-09-01";
@@ -15,19 +21,11 @@ export type RevolutWebhookPayload = {
   event?: string;
   order_id?: string;
   merchant_order_ext_ref?: string;
+  subscription_id?: string;
 };
 
 export function isRevolutConfigured(): boolean {
   return Boolean(process.env.REVOLUT_MERCHANT_API_SECRET);
-}
-
-export function getAppBaseUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (configured) return configured;
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return "https://clarivo-tech.com";
 }
 
 function getSecretKey(): string {
@@ -156,5 +154,11 @@ export function verifyRevolutWebhookSignature(params: {
 
 export function isRevolutOrderPaid(state: string | undefined): boolean {
   const normalized = (state ?? "").toLowerCase();
-  return normalized === "completed" || normalized === "authorised";
+  return (
+    normalized === "completed" ||
+    normalized === "authorised" ||
+    normalized === "authorized" ||
+    normalized === "captured" ||
+    normalized === "paid"
+  );
 }

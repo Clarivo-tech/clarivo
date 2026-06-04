@@ -1,4 +1,5 @@
-export const PRICE_PER_LICENSE_GBP = 99;
+/** Temporary test price — change back to 99 before launch. */
+export const PRICE_PER_LICENSE_GBP = 0.5;
 export const MIN_LICENSES = 1;
 export const MAX_LICENSES = 100;
 

@@ -1,39 +1,68 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { ImpersonationBanner } from "@/components/dashboard/impersonation-banner";
 import { TrialExpiryEnforcer } from "@/components/dashboard/trial-expiry-enforcer";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getUserPreferences } from "@/lib/data/user-preferences";
+import { getOrgContextForTeam } from "@/lib/team/org";
+import { bypassesTrialRestrictions } from "@/lib/admin/access";
+import { ensureTrialExpiryNotifications } from "@/lib/trial/notify-trial-expired";
+import { isAccountLocked } from "@/lib/trial/access";
+import { hasActiveWorkspace } from "@/lib/trial/workspace-access";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { dataSupabase, user, effectiveUserId, impersonating, isPlatformAdmin } =
+    await getDashboardSession();
 
-  if (!user) {
-    redirect("/login");
+  const [preferences, context] = await Promise.all([
+    getUserPreferences(dataSupabase, effectiveUserId),
+    getOrgContextForTeam(dataSupabase, effectiveUserId),
+  ]);
+
+  let impersonationEmail: string | null = null;
+  let effectiveUserCreatedAt = user.created_at;
+
+  if (impersonating) {
+    const admin = createAdminClient();
+    const { data: target } = await admin.auth.admin.getUserById(effectiveUserId);
+    impersonationEmail = target.user?.email ?? effectiveUserId;
+    effectiveUserCreatedAt = target.user?.created_at ?? effectiveUserCreatedAt;
   }
 
-  const preferences = await getUserPreferences(supabase, user.id);
-  const isTrial = preferences.subscription_status !== "active";
+  const operatorAccess = bypassesTrialRestrictions(user.email, impersonating);
+  const workspaceActive =
+    operatorAccess || hasActiveWorkspace(preferences, context);
+  const isTrial = !workspaceActive;
+
+  if (
+    !operatorAccess &&
+    !impersonating &&
+    isAccountLocked(preferences) &&
+    !preferences.expiry_notified
+  ) {
+    await ensureTrialExpiryNotifications(effectiveUserId);
+  }
   let trialExpiresAt = preferences.trial_expires_at;
-  const fallbackFromUserCreatedAt = user.created_at
-    ? new Date(new Date(user.created_at).getTime() + 5 * 60 * 1000).toISOString()
+
+  const fallbackFromUserCreatedAt = effectiveUserCreatedAt
+    ? new Date(
+        new Date(effectiveUserCreatedAt).getTime() + 5 * 60 * 1000
+      ).toISOString()
     : null;
 
-  // Self-heal legacy/incomplete signup rows so the trial banner/countdown appears.
   if (isTrial && !trialExpiresAt) {
     const nowIso = new Date().toISOString();
     const fallbackExpiry =
-      fallbackFromUserCreatedAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    const { error } = await supabase.from("user_preferences").upsert(
+      fallbackFromUserCreatedAt ??
+      new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const { error } = await dataSupabase.from("user_preferences").upsert(
       {
-        user_id: user.id,
+        user_id: effectiveUserId,
         trial_started_at: preferences.trial_started_at ?? nowIso,
         trial_expires_at: fallbackExpiry,
         subscription_status: "trial",
@@ -63,14 +92,22 @@ export default async function DashboardLayout({
     remainingMinutes == null
       ? null
       : remainingMinutes < 60
-      ? `${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}`
-      : remainingHours! < 24
-      ? `${remainingHours} hour${remainingHours === 1 ? "" : "s"}`
-      : `${remainingDays} day${remainingDays === 1 ? "" : "s"}`;
+        ? `${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}`
+        : remainingHours! < 24
+          ? `${remainingHours} hour${remainingHours === 1 ? "" : "s"}`
+          : `${remainingDays} day${remainingDays === 1 ? "" : "s"}`;
+
+  const showTrialBanner =
+    isTrial &&
+    !impersonating &&
+    remainingMs != null &&
+    remainingMs > 0 &&
+    remainingLabel != null;
 
   return (
     <DashboardShell
       userEmail={user.email ?? "Signed in"}
+      isPlatformAdmin={isPlatformAdmin}
       logo={
         <img
           src="/clarivo-logo.png"
@@ -84,8 +121,15 @@ export default async function DashboardLayout({
         />
       }
     >
-      <TrialExpiryEnforcer isTrial={isTrial} trialExpiresAt={trialExpiresAt} />
-      {isTrial && remainingLabel ? (
+      <TrialExpiryEnforcer
+        isTrial={isTrial}
+        trialExpiresAt={trialExpiresAt}
+        disabled={operatorAccess}
+      />
+      {impersonating && impersonationEmail ? (
+        <ImpersonationBanner targetEmail={impersonationEmail} />
+      ) : null}
+      {showTrialBanner ? (
         <div
           className={
             urgentTrial

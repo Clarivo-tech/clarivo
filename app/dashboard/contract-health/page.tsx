@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import {
   getContractDataByContractIds,
   getContracts,
@@ -8,16 +8,11 @@ import { ContractHealthPageClient } from "@/components/dashboard/contract-health
 export const dynamic = "force-dynamic";
 
 export default async function ContractHealthPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
-  if (!user) return null;
-
-  const contracts = await getContracts(supabase, user.id);
+  const contracts = await getContracts(dataSupabase, effectiveUserId);
   const contractData = await getContractDataByContractIds(
-    supabase,
+    dataSupabase,
     contracts.map((c) => c.id)
   );
 

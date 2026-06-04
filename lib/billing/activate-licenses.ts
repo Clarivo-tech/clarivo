@@ -25,13 +25,30 @@ export async function activateOrganisationLicenses(
     return { error: orgError.message };
   }
 
+  const now = new Date().toISOString();
+
+  const { data: members } = await supabase
+    .from("organisation_members")
+    .select("user_id")
+    .eq("organisation_id", params.organisationId)
+    .eq("status", "active");
+
+  const memberUserIds = [
+    params.ownerUserId,
+    ...((members ?? [])
+      .map((m) => m.user_id as string | null)
+      .filter((id): id is string => Boolean(id))),
+  ];
+
+  const uniqueUserIds = [...new Set(memberUserIds)];
+
   const { error: prefError } = await supabase
     .from("user_preferences")
     .update({
       subscription_status: "active",
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
-    .eq("user_id", params.ownerUserId);
+    .in("user_id", uniqueUserIds);
 
   if (prefError) {
     return { error: prefError.message };

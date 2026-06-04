@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { deleteVendor } from "@/app/dashboard/vendors/actions";
 import { VendorFormSheet } from "@/components/dashboard/vendor-form-sheet";
+import { PerformanceScoreBadge } from "@/components/performance/performance-score-badge";
 import { VendorRiskBadge } from "@/components/dashboard/vendor-risk-badge";
 import { VendorStatusBadge } from "@/components/dashboard/vendor-status-badge";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -212,6 +213,12 @@ export function VendorsPageClient({
                   <div className="mt-3 flex flex-wrap gap-2">
                     <VendorRiskBadge rating={vendor.risk_rating} />
                     <VendorStatusBadge status={vendor.status} />
+                    {vendor.performance_score != null ? (
+                      <PerformanceScoreBadge
+                        score={Number(vendor.performance_score)}
+                        rag={vendor.performance_rag}
+                      />
+                    ) : null}
                   </div>
                 </div>
               </div>

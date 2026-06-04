@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
 import {
   DEMO_TIMEZONE,
   formatUkDate,
@@ -59,7 +58,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Date is required." }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicSupabaseClient();
   const { data, error } = await supabase
     .from("demo_bookings")
     .select("booking_time")
@@ -103,17 +102,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid booking time." }, { status: 400 });
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo booking is not configured. Add SUPABASE_SERVICE_ROLE_KEY to server environment variables.",
-      },
-      { status: 500 }
-    );
-  }
-
-  const supabase = createAdminClient();
+  const supabase = createPublicSupabaseClient();
 
   const { data: clashRows, error: clashError } = await supabase
     .from("demo_bookings")
@@ -173,7 +162,6 @@ export async function POST(request: Request) {
       company,
       dateLabel,
       timeLabel,
-      googleCalendarUrl,
     }),
   });
 

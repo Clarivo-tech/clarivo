@@ -32,7 +32,9 @@ export async function findVendorByName(
   let query = supabase.from("vendors").select("*");
 
   if (organisationId) {
-    query = query.eq("organisation_id", organisationId);
+    query = query.or(
+      `organisation_id.eq.${organisationId},and(organisation_id.is.null,user_id.eq.${userId})`
+    );
   } else {
     query = query.eq("user_id", userId);
   }

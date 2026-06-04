@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getExchangeRates } from "@/lib/currency/exchange-rates";
 import {
   getContractDataByContractIds,
@@ -11,21 +11,16 @@ import { CurrencyProvider } from "@/components/providers/currency-provider";
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
   const [contracts, preferences, rates] = await Promise.all([
-    getContracts(supabase, user.id),
-    getUserPreferences(supabase, user.id),
+    getContracts(dataSupabase, effectiveUserId),
+    getUserPreferences(dataSupabase, effectiveUserId),
     getExchangeRates(),
   ]);
 
   const contractData = await getContractDataByContractIds(
-    supabase,
+    dataSupabase,
     contracts.map((c) => c.id)
   );
 

@@ -6,16 +6,19 @@ import { usePathname } from "next/navigation";
 type TrialExpiryEnforcerProps = {
   trialExpiresAt: string | null;
   isTrial: boolean;
+  disabled?: boolean;
 };
 
 export function TrialExpiryEnforcer({
   trialExpiresAt,
   isTrial,
+  disabled = false,
 }: TrialExpiryEnforcerProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isTrial || !trialExpiresAt) return;
+    if (disabled || !isTrial || !trialExpiresAt) return;
+    if (pathname.startsWith("/dashboard/admin")) return;
 
     let cancelled = false;
     const expiresAtMs = new Date(trialExpiresAt).getTime();

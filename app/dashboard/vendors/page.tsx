@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getVendorPageData } from "@/lib/data/vendors";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 import { VendorsPageClient } from "@/components/dashboard/vendors-page-client";
@@ -6,16 +6,11 @@ import { VendorsPageClient } from "@/components/dashboard/vendors-page-client";
 export const dynamic = "force-dynamic";
 
 export default async function VendorsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
   const [preferences, { rows, stats }] = await Promise.all([
-    getUserPreferences(supabase, user.id),
-    getVendorPageData(supabase, user.id),
+    getUserPreferences(dataSupabase, effectiveUserId),
+    getVendorPageData(dataSupabase, effectiveUserId),
   ]);
 
   return (

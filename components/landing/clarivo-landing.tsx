@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 import {
   BarChart2,
   Bell,
+  Building2,
   FileText,
   HeartPulse,
   LayoutDashboard,
   MessageSquare,
   Settings,
   Sparkles,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { ContactSection } from "@/components/landing/contact-section";
@@ -53,6 +55,12 @@ const FEATURES = [
       "Analyze vendor spend, portfolio growth, lifecycle timelines, risk registers, and export reports to CSV.",
   },
   {
+    icon: "⭐",
+    title: "Vendor Performance",
+    description:
+      "Score vendors against custom criteria on a 1–10 scale, track trends, and see portfolio-wide performance at a glance.",
+  },
+  {
     icon: "🛡️",
     title: "Contract and Relationship Health",
     description:
@@ -65,19 +73,43 @@ const STEPS = [
     num: "01",
     title: "Upload",
     description:
-      "Drop your contracts into Clarivo. We support PDFs and process them securely in the cloud.",
+      "Drop PDF contracts into Clarivo. Files are stored securely and ready for AI processing in seconds.",
   },
   {
     num: "02",
     title: "Extract",
     description:
-      "AI reads every clause, including values, dates, vendors, notice periods, and renewal terms automatically.",
+      "AI reads each contract and pulls out vendor, value, currency, dates, notice periods, and renewal terms automatically.",
   },
   {
     num: "03",
-    title: "Monitor",
+    title: "Vendors",
     description:
-      "Track renewals, chat with your data, and spot risk before deadlines pass you by.",
+      "Suppliers are organised into profiles with risk ratings, contacts, linked contracts, documents, and activity history.",
+  },
+  {
+    num: "04",
+    title: "Analytics",
+    description:
+      "View spend by vendor, portfolio growth, contract types, lifecycle timelines, and export insights to CSV.",
+  },
+  {
+    num: "05",
+    title: "Performance",
+    description:
+      "Score vendors 1–10 against custom criteria, track trends, and see portfolio-wide performance on your dashboard.",
+  },
+  {
+    num: "06",
+    title: "Health",
+    description:
+      "Get AI-backed contract and relationship health scores with clear recommendations on what needs attention.",
+  },
+  {
+    num: "07",
+    title: "Alerts & AI",
+    description:
+      "Set renewal and custom reminders, invite teammates to your workspace, and ask Contract AI questions grounded in your data.",
   },
 ];
 
@@ -89,16 +121,17 @@ const PLANS = [
     description: "One plan with everything Clarivo offers.",
     features: [
       "Unlimited contracts",
-      "AI extraction",
-      "Live dashboard",
-      "Renewal alerts",
+      "AI contract extraction",
+      "Live dashboard & portfolio insights",
+      "Vendor profiles & document tracking",
+      "Vendor performance scoring (1–10)",
+      "Spend analytics & CSV exports",
+      "Contract & relationship health scores",
+      "Renewal & custom alerts",
       "Contract AI chat",
-      "Spend analytics",
-      "Health scores",
-      "Custom reminders & alerts",
-      "Priority support",
+      "Team workspaces (up to 100 licenses)",
       "Multi-currency support",
-      "Everything included",
+      "Priority support",
     ],
     cta: "Start free trial",
     href: "/signup?intent=trial",
@@ -115,20 +148,38 @@ const STATS = [
 
 const MOCK_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Documents", icon: FileText, active: false },
+  { label: "Vendors", icon: Building2, active: false },
   { label: "Analytics", icon: BarChart2, active: false },
-  { label: "Contract Health", icon: HeartPulse, active: false },
-  { label: "My Team", icon: Users, active: false },
+  { label: "Performance", icon: TrendingUp, active: false },
+  { label: "Health", icon: HeartPulse, active: false },
   { label: "Alerts", icon: Bell, active: false },
+  { label: "My Team", icon: Users, active: false },
+  { label: "Documents", icon: FileText, active: false },
   { label: "Settings", icon: Settings, active: false },
 ] as const;
 
 const PORTFOLIO_POINTS = [42, 48, 45, 58, 62, 71, 68, 78, 85, 92];
+const SPEND_BY_VENDOR = [
+  { label: "RevForce", pct: 88, color: "#F97316" },
+  { label: "FinanceCore", pct: 62, color: "#38BDF8" },
+  { label: "DataSync", pct: 41, color: "#A855F7" },
+  { label: "CloudHost", pct: 28, color: "#10B981" },
+];
 const CONTRACT_TYPES = [
   { label: "SaaS", pct: 72, color: "#F97316" },
   { label: "Services", pct: 48, color: "#38BDF8" },
   { label: "Lease", pct: 35, color: "#A855F7" },
   { label: "Other", pct: 22, color: "#10B981" },
+];
+const PERFORMANCE_VENDORS = [
+  { name: "FinanceCore", score: 6.8, rag: "amber" as const },
+  { name: "RevForce", score: 8.2, rag: "green" as const },
+  { name: "DataSync", score: 4.1, rag: "red" as const },
+];
+const HEALTH_BREAKDOWN = [
+  { label: "Healthy", count: 7, color: "#22c55e" },
+  { label: "Watch", count: 3, color: "#F97316" },
+  { label: "At risk", count: 2, color: "#ef4444" },
 ];
 
 function MockLineChart() {
@@ -167,17 +218,17 @@ function MockLineChart() {
   );
 }
 
-function MockDashboard() {
-  const rows = [
-    { vendor: "Acme SaaS Ltd", value: "£48k", health: 7 },
-    { vendor: "CloudHost Inc", value: "£12k", health: 9 },
-    { vendor: "DataSync Pro", value: "£86k", health: 4 },
-  ];
+function performanceRagClass(rag: "green" | "amber" | "red") {
+  if (rag === "green") return "bg-emerald-100 text-emerald-700";
+  if (rag === "amber") return "bg-orange-100 text-[#111827]";
+  return "bg-red-100 text-red-700";
+}
 
+function MockDashboard() {
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
-      <div className="flex min-h-[320px]">
-        <div className="hidden w-[148px] shrink-0 border-r border-white/[0.08] bg-[#111827] px-2.5 py-3 sm:block">
+      <div className="flex min-h-[400px]">
+        <div className="hidden w-[152px] shrink-0 border-r border-white/[0.08] bg-[#111827] px-2 py-3 sm:block">
           <div className="flex items-center gap-2 px-1">
             <Image
               src="/clarivo-logo.png"
@@ -188,18 +239,18 @@ function MockDashboard() {
             />
             <span className="text-[11px] font-semibold text-white">Clarivo</span>
           </div>
-          <nav className="mt-4 space-y-0.5">
+          <nav className="mt-3 space-y-0.5">
             {MOCK_NAV.map((item) => (
               <div
                 key={item.label}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[10px] font-medium",
+                  "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[9px] font-medium",
                   item.active
                     ? "bg-[#F97316] text-white shadow-sm shadow-orange-500/30"
                     : "text-zinc-500"
                 )}
               >
-                <item.icon className="size-3.5 shrink-0" strokeWidth={2} />
+                <item.icon className="size-3 shrink-0" strokeWidth={2} />
                 <span className="truncate">{item.label}</span>
               </div>
             ))}
@@ -207,31 +258,41 @@ function MockDashboard() {
         </div>
 
         <div className="min-w-0 flex-1 bg-zinc-50/80 p-3 sm:p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-zinc-800">Dashboard</p>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
               Trial active
             </span>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-            {[
-              { label: "Contracts", val: "12" },
-              { label: "Portfolio", val: "£284k" },
-              { label: "Renewals", val: "4" },
-              { label: "Alerts", val: "9" },
-            ].map((s) => (
+          <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+            {(
+              [
+                { label: "Contracts", val: "12", highlight: false },
+                { label: "Vendors", val: "4", highlight: false },
+                { label: "Portfolio", val: "£284k", highlight: false },
+                { label: "Avg score", val: "6.8/10", highlight: true },
+                { label: "Alerts", val: "3", highlight: false },
+              ] as const
+            ).map((s) => (
               <div
                 key={s.label}
-                className="rounded-lg border border-zinc-200 bg-white px-2 py-2"
+                className="rounded-lg border border-zinc-200 bg-white px-2 py-1.5"
               >
-                <p className="text-[8px] text-zinc-500">{s.label}</p>
-                <p className="text-sm font-bold text-zinc-900">{s.val}</p>
+                <p className="text-[7px] text-zinc-500 sm:text-[8px]">{s.label}</p>
+                <p
+                  className={cn(
+                    "text-xs font-bold sm:text-sm",
+                    s.highlight ? "text-[#F97316]" : "text-zinc-900"
+                  )}
+                >
+                  {s.val}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="mt-2.5 grid gap-2 lg:grid-cols-[1fr_0.85fr]">
+          <div className="mt-2.5 grid gap-2 lg:grid-cols-[1fr_0.72fr]">
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
                 <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
@@ -240,19 +301,19 @@ function MockDashboard() {
                 <MockLineChart />
                 <div className="mt-1 flex justify-between text-[8px] text-zinc-400">
                   <span>Jan</span>
-                  <span>+18% YoY</span>
+                  <span className="font-medium text-emerald-600">+18% YoY</span>
                   <span>Dec</span>
                 </div>
               </div>
 
               <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
                 <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
-                  Contracts by type
+                  Spend by vendor
                 </p>
                 <div className="mt-2 space-y-1.5">
-                  {CONTRACT_TYPES.map((t) => (
+                  {SPEND_BY_VENDOR.map((t) => (
                     <div key={t.label} className="flex items-center gap-2">
-                      <span className="w-10 shrink-0 text-[8px] text-zinc-600">
+                      <span className="w-14 shrink-0 truncate text-[8px] text-zinc-600">
                         {t.label}
                       </span>
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100">
@@ -269,33 +330,66 @@ function MockDashboard() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-zinc-200 bg-white p-2.5 sm:col-span-2">
+              <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
                 <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
-                  Vendor health
+                  Vendor performance
                 </p>
-                <div className="mt-2 grid grid-cols-3 gap-1.5">
-                  {rows.map((row) => (
+                <div className="mt-2 space-y-1.5">
+                  {PERFORMANCE_VENDORS.map((v) => (
                     <div
-                      key={row.vendor}
-                      className="rounded-md border border-zinc-100 bg-zinc-50/80 px-2 py-1.5"
+                      key={v.name}
+                      className="flex items-center justify-between gap-2 rounded-md border border-zinc-100 bg-zinc-50/80 px-2 py-1"
                     >
-                      <p className="truncate text-[9px] font-medium text-zinc-900">
-                        {row.vendor}
-                      </p>
-                      <div className="mt-1 flex items-center justify-between">
-                        <span className="text-[8px] text-zinc-500">{row.value}</span>
-                        <span
-                          className={cn(
-                            "rounded px-1 text-[8px] font-bold",
-                            row.health >= 8
-                              ? "bg-emerald-100 text-emerald-700"
-                              : row.health >= 5
-                                ? "bg-orange-100 text-[#111827]"
-                                : "bg-red-100 text-red-700"
-                          )}
-                        >
-                          {row.health}
-                        </span>
+                      <span className="truncate text-[9px] font-medium text-zinc-800">
+                        {v.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold tabular-nums",
+                          performanceRagClass(v.rag)
+                        )}
+                      >
+                        {v.score}/10
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
+                <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
+                  Contract health
+                </p>
+                <div className="mt-2 flex gap-2">
+                  {HEALTH_BREAKDOWN.map((h) => (
+                    <div
+                      key={h.label}
+                      className="flex flex-1 flex-col items-center rounded-md border border-zinc-100 bg-zinc-50/80 px-1 py-2"
+                    >
+                      <span
+                        className="text-sm font-bold tabular-nums"
+                        style={{ color: h.color }}
+                      >
+                        {h.count}
+                      </span>
+                      <span className="mt-0.5 text-[7px] text-zinc-500">{h.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {CONTRACT_TYPES.slice(0, 3).map((t) => (
+                    <div key={t.label} className="flex items-center gap-2">
+                      <span className="w-10 shrink-0 text-[8px] text-zinc-600">
+                        {t.label}
+                      </span>
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-100">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${t.pct}%`,
+                            backgroundColor: t.color,
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -313,16 +407,15 @@ function MockDashboard() {
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-2.5">
                   <div className="rounded-lg rounded-bl-sm bg-white/95 px-2 py-1.5 text-[9px] leading-snug text-[#111827]">
-                    Ask anything about your portfolio, including renewals, spend, notice
-                    periods, and risk.
+                    Ask about renewals, vendor scores, spend, and contract health across
+                    your portfolio.
                   </div>
                   <div className="ml-auto max-w-[92%] rounded-lg rounded-br-sm bg-[#F97316] px-2 py-1.5 text-[9px] text-white">
-                    Which contracts renew in the next 60 days?
+                    Which vendors need attention this quarter?
                   </div>
                   <div className="rounded-lg rounded-bl-sm bg-white/95 px-2 py-1.5 text-[9px] leading-snug text-[#111827]">
-                    <span className="font-medium text-[#F97316]">3 renewals</span>{" "}
-                    due: DataSync Pro (14d), Acme SaaS (43d), CloudHost (58d).
-                    Total exposure £146k.
+                    <span className="font-medium text-[#F97316]">DataSync</span> (4.1/10
+                    performance, at-risk health). Notice period in 14 days. £86k exposure.
                   </div>
                 </div>
                 <div className="border-t border-white/[0.08] p-2">
@@ -340,14 +433,17 @@ function MockDashboard() {
 
               <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
                 <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
-                  Renewal alerts
+                  Alerts & reminders
                 </p>
                 <div className="mt-1.5 space-y-1 text-[9px]">
                   <p className="rounded-md bg-red-50 px-2 py-1 font-medium text-red-700">
-                    DataSync Pro, notice in 14 days
+                    DataSync — notice in 14 days
                   </p>
                   <p className="rounded-md bg-orange-50 px-2 py-1 font-medium text-[#111827]">
-                    Acme SaaS, renewal in 43 days
+                    FinanceCore — review due
+                  </p>
+                  <p className="rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-800">
+                    RevForce — insurance expires 30 Jun
                   </p>
                 </div>
               </div>
@@ -463,12 +559,10 @@ export function ClarivoLanding() {
                     "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
                 }}
               >
-                Centralised Contract Intelligence
+                Smart Vendor Management & Contract Intelligence
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#555555] sm:text-lg">
-                Upload your contracts. Clarivo&apos;s AI extracts the critical
-                data and keeps your entire portfolio visible, so you never miss
-                a thing!
+                Upload your contracts, Clarivo will do the rest.
               </p>
               <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row">
                 <Link
@@ -571,22 +665,25 @@ export function ClarivoLanding() {
             >
               How it works
             </h2>
-            <div className="relative mt-16 grid gap-12 md:grid-cols-3 md:gap-8">
-              <div
-                className="absolute left-[16.67%] right-[16.67%] top-8 hidden h-px bg-gradient-to-r from-transparent via-[#F97316]/50 to-transparent md:block"
-                aria-hidden
-              />
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[#555555]">
+              From upload to vendor scores, health insights, and team collaboration
+              — everything in one workflow.
+            </p>
+            <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {STEPS.map((step) => (
-                <div key={step.num} className="relative text-center md:text-left">
+                <div
+                  key={step.num}
+                  className="rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-sm"
+                >
                   <p
                     className={cn(
                       displayFont,
-                      "text-5xl font-bold text-[#F97316] sm:text-6xl"
+                      "text-4xl font-bold text-[#F97316] sm:text-5xl"
                     )}
                   >
                     {step.num}
                   </p>
-                  <h3 className="mt-4 text-xl font-semibold text-[#333333]">
+                  <h3 className="mt-3 text-lg font-semibold text-[#333333]">
                     {step.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-[#555555]">

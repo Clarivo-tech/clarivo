@@ -15,10 +15,12 @@ import { SignOutButton } from "@/components/dashboard/sign-out-button";
 
 export function DashboardShell({
   userEmail,
+  isPlatformAdmin = false,
   logo,
   children,
 }: {
   userEmail: string;
+  isPlatformAdmin?: boolean;
   logo: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -40,7 +42,7 @@ export function DashboardShell({
         </SidebarHeader>
 
         <SidebarContent className="px-3 py-5">
-          <DashboardNav />
+          <DashboardNav isPlatformAdmin={isPlatformAdmin} />
         </SidebarContent>
 
         <SidebarFooter className="border-t border-white/[0.08] p-4">

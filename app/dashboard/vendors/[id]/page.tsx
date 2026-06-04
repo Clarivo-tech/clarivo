@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getExchangeRates } from "@/lib/currency/exchange-rates";
+import { getPerformanceCriteria } from "@/lib/data/performance";
+import { getVendorReviewHistory } from "@/lib/data/performance";
 import { getVendorDetailData } from "@/lib/data/vendors";
 import { getUserPreferences } from "@/lib/data/user-preferences";
+import { ensureDefaultPerformanceCriteria } from "@/lib/performance/seed-criteria";
 import { DashboardDataProvider } from "@/components/dashboard/dashboard-data-provider";
 import { VendorDetailPageClient } from "@/components/dashboard/vendor-detail-page-client";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
@@ -15,17 +18,16 @@ export default async function VendorDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { dataSupabase, effectiveUserId } = await getDashboardSession();
 
-  if (!user) return null;
+  await ensureDefaultPerformanceCriteria(dataSupabase, effectiveUserId);
 
-  const [data, preferences, rates] = await Promise.all([
-    getVendorDetailData(supabase, user.id, id),
-    getUserPreferences(supabase, user.id),
+  const [data, preferences, rates, reviews, criteria] = await Promise.all([
+    getVendorDetailData(dataSupabase, effectiveUserId, id),
+    getUserPreferences(dataSupabase, effectiveUserId),
     getExchangeRates(),
+    getVendorReviewHistory(dataSupabase, effectiveUserId, id),
+    getPerformanceCriteria(dataSupabase, effectiveUserId),
   ]);
 
   if (!data) notFound();
@@ -46,6 +48,8 @@ export default async function VendorDetailPage({
           activity={data.activity}
           totalSpend={data.totalSpend}
           baseCurrency={preferences.base_currency}
+          performanceReviews={reviews}
+          performanceCriteria={criteria}
         />
       </DashboardDataProvider>
     </CurrencyProvider>
