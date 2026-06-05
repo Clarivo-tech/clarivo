@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { fulfillBillingSubscription } from "@/lib/billing/fulfill-subscription";
+import { sendPaymentConfirmationEmailsOnce } from "@/lib/billing/send-payment-confirmation-once";
 
 export async function syncLatestPendingSubscriptionForUser(
   userId: string,
@@ -37,10 +38,12 @@ export async function syncLatestPendingSubscriptionForUser(
   }
 
   if (subscription.status === "active") {
-    await sendPaymentConfirmationEmailsOnce(admin, "billing_subscriptions", subscription, {
-      ownerEmail,
-      isAddLicenses: false,
-    });
+    if (admin) {
+      await sendPaymentConfirmationEmailsOnce(admin, "billing_subscriptions", subscription, {
+        ownerEmail,
+        isAddLicenses: false,
+      });
+    }
     return { fulfilled: false };
   }
 

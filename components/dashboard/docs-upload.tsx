@@ -72,7 +72,7 @@ export function DocsUpload({
   }
 
   return (
-    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+    <div className="flex flex-col items-start gap-3">
       <input
         ref={inputRef}
         type="file"
@@ -99,7 +99,6 @@ export function DocsUpload({
           </>
         )}
       </Button>
-      <p className="text-sm text-zinc-500">PDF — upload and AI extraction in one step</p>
       {error && (
         <Alert variant="destructive" className="w-full sm:max-w-md">
           <AlertDescription>{error}</AlertDescription>

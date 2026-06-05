@@ -15,7 +15,7 @@ type ChatMessage = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
-  content: "Ask about your contracts: value, renewals, vendors, and dates.",
+  content: "Ask about your contracts",
 };
 
 /** Compact Ask Clarivo AI tile — matches sidebar navy */
@@ -171,7 +171,7 @@ export function ContractChat({
             </h2>
             {compact ? (
               <p className="mt-0.5 text-sm text-white/90">
-                Ask about your contracts: value, renewals, vendors, and dates.
+                Ask about your contracts
               </p>
             ) : (
               <p className="mt-0.5 text-sm text-zinc-500">

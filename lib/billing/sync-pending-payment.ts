@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { fulfillBillingPayment } from "@/lib/billing/fulfill-payment";
+import { sendPaymentConfirmationEmailsOnce } from "@/lib/billing/send-payment-confirmation-once";
 import { syncLatestPendingSubscriptionForUser } from "@/lib/billing/sync-pending-subscription";
 
 export async function syncLatestPendingPaymentForUser(
@@ -49,10 +50,12 @@ export async function syncLatestPendingPaymentForUser(
   }
 
   if (payment?.status === "completed") {
-    await sendPaymentConfirmationEmailsOnce(admin, "billing_payments", payment, {
-      ownerEmail,
-      isAddLicenses: payment.merchant_reference.startsWith("clarivo-add-"),
-    });
+    if (admin) {
+      await sendPaymentConfirmationEmailsOnce(admin, "billing_payments", payment, {
+        ownerEmail,
+        isAddLicenses: payment.merchant_reference.startsWith("clarivo-add-"),
+      });
+    }
     return { fulfilled: true };
   }
 

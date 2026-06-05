@@ -1,23 +1,16 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { activateOrganisationLicenses } from "@/lib/billing/activate-licenses";
+import { licensesToAmountPence } from "@/lib/billing/constants";
 import { getSubscriptionPlanConfig } from "@/lib/billing/subscription-plan-config";
 import { startAddLicensesCheckout } from "@/lib/billing/start-add-licenses-checkout";
-import {
-  createRevolutCheckoutOrder,
-  getRevolutRedirectBaseUrl,
-} from "@/lib/billing/revolut";
+import { getRevolutRedirectBaseUrl, retrieveRevolutOrder } from "@/lib/billing/revolut";
 import {
   createRevolutSubscription,
   findOrCreateRevolutCustomer,
   isRevolutSubscriptionActive,
   retrieveRevolutSubscription,
   revolutIdempotencyKey,
-  isUsageBillingVariation,
   updateRevolutSubscriptionLicenseCount,
 } from "@/lib/billing/revolut-subscriptions";
-import { retrieveRevolutOrder } from "@/lib/billing/revolut";
-import { sendSubscriptionConfirmationEmail } from "@/lib/billing/send-confirmation-email";
-import { licensesToAmountPence } from "@/lib/billing/constants";
 import type { OrgContext } from "@/lib/team/types";
 
 type BillingSubscriptionRow = {
@@ -48,41 +41,6 @@ export type UpdateSubscriptionLicensesResult =
       additionalLicenses: number;
     }
   | { ok: false; status: number; error: string };
-
-async function activateSeats(
-  billingDb: SupabaseClient,
-  params: {
-    context: OrgContext;
-    user: User;
-    newTotal: number;
-    isAddLicenses: boolean;
-  }
-): Promise<{ error?: string }> {
-  const activation = await activateOrganisationLicenses(billingDb, {
-    organisationId: params.context.organisationId,
-    ownerUserId: params.user.id,
-    ownerEmail: params.user.email,
-    licenses: params.newTotal,
-  });
-
-  if (activation.error) {
-    return { error: activation.error };
-  }
-
-  try {
-    await sendSubscriptionConfirmationEmail(billingDb, {
-      userId: params.user.id,
-      organisationId: params.context.organisationId,
-      ownerEmail: params.user.email,
-      licenses: params.newTotal,
-      isAddLicenses: params.isAddLicenses,
-    });
-  } catch (error) {
-    console.error("[billing] License change confirmation emails failed:", error);
-  }
-
-  return {};
-}
 
 async function updateActiveRevolutSubscription(
   billingDb: SupabaseClient,
@@ -132,6 +90,41 @@ async function updateActiveRevolutSubscription(
   }
 
   return {};
+}
+
+/** After a paid add-license checkout, align Revolut recurring quantity with the new total. */
+export async function syncActiveSubscriptionLicenseCount(
+  billingDb: SupabaseClient,
+  organisationId: string,
+  newTotal: number
+): Promise<{ error?: string }> {
+  const { data: activeSub } = await billingDb
+    .from("billing_subscriptions")
+    .select("*")
+    .eq("organisation_id", organisationId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!activeSub?.revolut_subscription_id) {
+    return {};
+  }
+
+  let planConfig;
+  try {
+    planConfig = await getSubscriptionPlanConfig();
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Subscription plan is not configured.";
+    return { error: message };
+  }
+
+  return updateActiveRevolutSubscription(billingDb, {
+    subscription: activeSub as BillingSubscriptionRow,
+    planConfig,
+    newTotal,
+  });
 }
 
 async function startNewSubscriptionCheckout(
@@ -257,50 +250,15 @@ export async function updateSubscriptionLicenses(params: {
     .maybeSingle();
 
   if (activeSub?.revolut_subscription_id) {
-    const revolutUpdate = await updateActiveRevolutSubscription(params.billingDb, {
-      subscription: activeSub as BillingSubscriptionRow,
-      planConfig,
+    return startAddLicensesCheckout({
+      request: params.request,
+      billingDb: params.billingDb,
+      user: params.user,
+      context: params.context,
       newTotal: params.newTotal,
-    });
-
-    if (!revolutUpdate.error) {
-      const activation = await activateSeats(params.billingDb, {
-        context: params.context,
-        user: params.user,
-        newTotal: params.newTotal,
-        isAddLicenses: true,
-      });
-
-      if (activation.error) {
-        return { ok: false, status: 500, error: activation.error };
-      }
-
-      return {
-        ok: true,
-        mode: "subscription_updated",
-        currentLicenses: currentTotal,
-        newTotal: params.newTotal,
-      };
-    }
-
-    const usageBilling = await isUsageBillingVariation(
-      params.planConfig.planVariationId
+    }).then((result) =>
+      result.ok ? { ...result, mode: "checkout" as const } : result
     );
-    if (!usageBilling) {
-      return startAddLicensesCheckout({
-        request: params.request,
-        billingDb: params.billingDb,
-        user: params.user,
-        context: params.context,
-        newTotal: params.newTotal,
-      }).then((result) =>
-        result.ok
-          ? { ...result, mode: "checkout" as const }
-          : result
-      );
-    }
-
-    return { ok: false, status: 502, error: revolutUpdate.error };
   }
 
   const isPro =

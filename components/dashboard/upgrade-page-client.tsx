@@ -339,7 +339,7 @@ export function UpgradePageClient({
 
         <p className="text-center text-xs text-zinc-500">
           {isAddMode
-            ? "If checkout is required (e.g. first-time subscription setup), you\u2019ll go to Revolut\u2019s secure page. Otherwise your seat count updates immediately."
+            ? "You\u2019ll pay for the additional licenses on Revolut\u2019s secure checkout page, then your seat count updates on My Team."
             : "You\u2019ll set up a monthly subscription on Revolut\u2019s secure checkout page."}
           Questions?{" "}
           <a

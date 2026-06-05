@@ -123,15 +123,23 @@ export function DocsPageClient({
   }, [router]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
-        {canUpload ? (
-          <DocsUpload onUploadComplete={handleUploadComplete} />
-        ) : (
-          <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-            You have read-only access. Contact an admin to upload contracts.
-          </p>
-        )}
+    <div className="flex flex-col gap-10">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+          Documents
+        </h1>
+        <p className="mt-2 text-sm text-zinc-500">
+          Upload a PDF. Storage, AI extraction, and analysis complete in one step.
+        </p>
+        <div className="mt-4">
+          {canUpload ? (
+            <DocsUpload onUploadComplete={handleUploadComplete} />
+          ) : (
+            <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+              You have read-only access. Contact an admin to upload contracts.
+            </p>
+          )}
+        </div>
       </div>
       <DocsGrid
         contracts={contracts}

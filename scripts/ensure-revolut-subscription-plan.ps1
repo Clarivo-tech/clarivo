@@ -137,3 +137,5 @@ else {
 Write-Host "REVOLUT_SUBSCRIPTIONS_API_VERSION=$apiVersion"
 Write-Host ""
 Write-Host "Re-run scripts/register-revolut-webhook.ps1 to add subscription webhook events." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Go-live: set PRICE_PER_LICENSE_GBP=99.99 in Vercel, re-run this script for a new plan, update plan env IDs." -ForegroundColor Yellow

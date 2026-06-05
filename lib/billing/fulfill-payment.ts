@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { activateOrganisationLicenses } from "@/lib/billing/activate-licenses";
 import { sendPaymentConfirmationEmailsOnce } from "@/lib/billing/send-payment-confirmation-once";
 import { retrieveRevolutOrder, isRevolutOrderPaid } from "@/lib/billing/revolut";
+import { syncActiveSubscriptionLicenseCount } from "@/lib/billing/update-subscription-licenses";
 
 type BillingPaymentRow = {
   id: string;
@@ -64,6 +65,17 @@ export async function fulfillBillingPayment(
 
   if (activation.error) {
     return { fulfilled: false, error: activation.error };
+  }
+
+  if (payment.merchant_reference.startsWith("clarivo-add-")) {
+    const sync = await syncActiveSubscriptionLicenseCount(
+      admin,
+      payment.organisation_id,
+      payment.licenses
+    );
+    if (sync.error) {
+      console.error("[billing] Revolut subscription seat sync after add-licenses:", sync.error);
+    }
   }
 
   const now = new Date().toISOString();
