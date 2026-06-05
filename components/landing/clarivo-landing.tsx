@@ -572,12 +572,6 @@ export function ClarivoLanding() {
                   Start free trial
                 </Link>
                 <Link
-                  href="/signup?intent=paid"
-                  className="w-full rounded-lg border border-purple-200 bg-purple-50 px-6 py-3.5 text-center text-sm font-semibold text-purple-800 transition-colors hover:bg-purple-100 sm:w-auto"
-                >
-                  Sign up now
-                </Link>
-                <Link
                   href="/book-demo"
                   className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-center text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
                 >
