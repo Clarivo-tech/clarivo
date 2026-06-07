@@ -2,12 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { PLATFORM_ADMIN_EMAIL } from "@/lib/admin/constants";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeCurrencyCode } from "@/lib/currency/currencies";
-import { upsertBaseCurrency } from "@/lib/data/user-preferences";
+import {
+  getUserPreferences,
+  upsertBaseCurrency,
+} from "@/lib/data/user-preferences";
+import { sendEmail } from "@/lib/email/send";
+import { founderSubscriptionCancellationRequestEmail } from "@/lib/email/templates";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
 import { userCanAccessContract } from "@/lib/team/contract-access";
-import { getUserRole } from "@/lib/team/org";
+import { getOrgContextForTeam, getUserRole } from "@/lib/team/org";
 import { canEditContracts } from "@/lib/team/roles";
 import type { ContractData } from "@/lib/types/contracts";
 
@@ -72,6 +78,68 @@ export async function updateBaseCurrency(
 
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function requestSubscriptionCancellation(): Promise<{
+  error?: string;
+  success?: boolean;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const context = await getOrgContextForTeam(supabase, user.id);
+  if (!context) {
+    return { error: "Workspace not found." };
+  }
+
+  if (context.role !== "owner") {
+    return { error: "Only the workspace owner can request cancellation." };
+  }
+
+  if (!context.isSubscribed) {
+    return { error: "You do not have an active Pro subscription." };
+  }
+
+  const preferences = await getUserPreferences(supabase, user.id);
+  const displayName =
+    (user.user_metadata?.display_name as string | undefined)?.trim() ||
+    [preferences.first_name, preferences.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    user.email?.split("@")[0] ||
+    "Customer";
+
+  const template = founderSubscriptionCancellationRequestEmail({
+    customerName: displayName,
+    email: user.email ?? "",
+    company: preferences.company?.trim() || context.organisationName,
+    jobTitle: preferences.job_title,
+    organisationName: context.organisationName,
+    licenses: context.seatLimit,
+    requestedAt: new Date().toISOString(),
+  });
+
+  try {
+    await sendEmail({
+      to: PLATFORM_ADMIN_EMAIL,
+      subject: template.subject,
+      html: template.html,
+    });
+  } catch (error) {
+    console.error("[settings] cancellation request email failed:", error);
+    return {
+      error: "Could not send your cancellation request. Please email hello@clarivo-tech.com.",
+    };
+  }
+
   return { success: true };
 }
 

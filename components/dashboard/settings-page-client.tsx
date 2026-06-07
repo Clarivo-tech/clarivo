@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
-import { updateBaseCurrency, updateDisplayName } from "@/app/dashboard/actions";
+import {
+  requestSubscriptionCancellation,
+  updateBaseCurrency,
+  updateDisplayName,
+} from "@/app/dashboard/actions";
 import {
   ADD_LICENSES_PAGE_PATH,
   UPGRADE_PAGE_PATH,
@@ -100,6 +104,9 @@ export function SettingsPageClient({
   const [preferencesPending, startPreferencesTransition] = useTransition();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelPending, startCancelTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
 
   const emailInitial = (email[0] ?? "?").toUpperCase();
@@ -358,6 +365,42 @@ export function SettingsPageClient({
           </CardContent>
         </Card>
 
+        {isOwner && onPro ? (
+          <Card className={cardClassName}>
+            <CardHeader className="border-b border-zinc-100">
+              <CardTitle className={cardTitleClassName}>
+                Cancel Subscription
+              </CardTitle>
+              <CardDescription>
+                Request to end your Pro subscription. Your access continues until
+                we process the cancellation in Revolut.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-2">
+              <p className="text-sm text-zinc-600">
+                Clicking the button below notifies our team. We will cancel your
+                subscription manually and confirm with you by email.
+              </p>
+              {cancelError ? (
+                <p className="text-sm text-red-600" role="alert">
+                  {cancelError}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="border-zinc-300 text-zinc-800 hover:bg-zinc-50"
+                onClick={() => {
+                  setCancelError(null);
+                  setCancelDialogOpen(true);
+                }}
+              >
+                Cancel Subscription
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card className={cn(cardClassName, "border-red-200/60")}>
           <CardHeader className="border-b border-red-100">
             <CardTitle className={cn(cardTitleClassName, "text-red-700")}>
@@ -382,6 +425,45 @@ export function SettingsPageClient({
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent showCloseButton className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-sans text-lg font-semibold">
+              Request subscription cancellation?
+            </DialogTitle>
+            <DialogDescription>
+              We will be notified and will cancel your subscription manually in
+              Revolut. Your Pro access stays active until that is complete.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="border-0 bg-transparent sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={cancelPending}
+            >
+              Keep subscription
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmCancelSubscription}
+              disabled={cancelPending}
+            >
+              {cancelPending ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                "Send cancellation request"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent showCloseButton className="sm:max-w-md">

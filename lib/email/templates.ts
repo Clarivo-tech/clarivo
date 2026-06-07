@@ -329,6 +329,37 @@ export function founderSubscriptionPaymentEmail(params: {
   return { subject, html };
 }
 
+export function founderSubscriptionCancellationRequestEmail(params: {
+  customerName: string;
+  email: string;
+  company: string;
+  jobTitle?: string | null;
+  organisationName: string;
+  licenses: number;
+  requestedAt: string;
+}): EmailTemplate {
+  const subject = `⚠️ Subscription cancellation request — ${params.company || params.organisationName}`;
+  const html = shell(
+    "Subscription cancellation request",
+    "#DC2626",
+    `
+    <p style="margin:0 0 16px 0;color:#444;">A Pro customer requested subscription cancellation from Settings. Cancel manually in Revolut.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Name</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.customerName}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px;border-bottom:1px solid #eee;"><a href="mailto:${params.email}" style="color:#F97316;">${params.email}</a></td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Company</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.company || "—"}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Job title</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.jobTitle?.trim() || "—"}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Workspace</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.organisationName}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Licenses</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.licenses}</td></tr>
+      <tr><td style="padding:8px;color:#666;">Requested at</td><td style="padding:8px;">${params.requestedAt}</td></tr>
+    </table>
+    ${ctaButton("Reply to customer", `mailto:${params.email}`)}
+  `
+  );
+
+  return { subject, html };
+}
+
 export function founderNotificationEmail(user: {
   firstName: string;
   lastName: string;
