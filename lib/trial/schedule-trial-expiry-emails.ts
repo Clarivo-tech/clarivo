@@ -18,6 +18,7 @@ export function scheduleTrialExpiryEmails(
     fetch(notifyUrl, {
       method: "POST",
       headers: {
+        authorization: `Bearer ${secret}`,
         "x-cron-secret": secret,
         "content-type": "application/json",
       },

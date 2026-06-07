@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { isCronAuthorized } from "@/lib/cron/auth";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import {
   ensureTrialExpiryNotifications,
   processExpiredTrialNotifications,
 } from "@/lib/trial/notify-trial-expired";
 
-function isAuthorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  const provided = request.headers.get("x-cron-secret");
-  return Boolean(expected && provided && expected === provided);
-}
-
-export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+async function runTrialExpiredNotify(request: Request) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -29,8 +24,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ sent: sent ? 1 : 0, userId });
   }
 
-  const admin = createAdminClient();
-  const sent = await processExpiredTrialNotifications(admin);
+  const admin = tryCreateAdminClient();
+  if (!admin) {
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is not configured." },
+      { status: 503 }
+    );
+  }
 
+  const sent = await processExpiredTrialNotifications(admin);
   return NextResponse.json({ sent });
+}
+
+/** Vercel cron invokes this route with GET + Authorization: Bearer. */
+export async function GET(request: Request) {
+  return runTrialExpiredNotify(request);
+}
+
+/** Middleware triggers a single-user notify with POST + cron secret. */
+export async function POST(request: Request) {
+  return runTrialExpiredNotify(request);
 }

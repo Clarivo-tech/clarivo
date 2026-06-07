@@ -1,13 +1,8 @@
 import { differenceInCalendarDays, format, parseISO, startOfToday, subDays } from "date-fns";
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron/auth";
 import { sendEmail } from "@/lib/email/send";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function isAuthorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  const provided = request.headers.get("x-cron-secret");
-  return Boolean(expected && provided && expected === provided);
-}
 
 function reminderEmailHtml(input: {
   firstName: string;
@@ -68,8 +63,8 @@ type PrefRow = {
   remind_expiry: boolean | null;
 };
 
-export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+async function runSendReminders(request: Request) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -200,4 +195,12 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ sent });
+}
+
+export async function GET(request: Request) {
+  return runSendReminders(request);
+}
+
+export async function POST(request: Request) {
+  return runSendReminders(request);
 }

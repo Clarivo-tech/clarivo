@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron/auth";
 import { getAppBaseUrl } from "@/lib/app-url";
 import { sendEmail } from "@/lib/email/send";
 import { trialReminderEmail } from "@/lib/email/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-function isAuthorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  const provided = request.headers.get("x-cron-secret");
-  return Boolean(expected && provided && expected === provided);
-}
-
-export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+async function runTrialReminder(request: Request) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -57,4 +52,12 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ sent: sentUserIds.length });
+}
+
+export async function GET(request: Request) {
+  return runTrialReminder(request);
+}
+
+export async function POST(request: Request) {
+  return runTrialReminder(request);
 }

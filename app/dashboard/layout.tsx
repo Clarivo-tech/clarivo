@@ -8,8 +8,11 @@ import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { bypassesTrialRestrictions } from "@/lib/admin/access";
 import { ensureTrialExpiryNotifications } from "@/lib/trial/notify-trial-expired";
-import { isAccountLocked } from "@/lib/trial/access";
-import { hasActiveWorkspace } from "@/lib/trial/workspace-access";
+import {
+  hasActiveWorkspace,
+  isWorkspaceLocked,
+  withFallbackTrialExpiry,
+} from "@/lib/trial/workspace-access";
 
 export default async function DashboardLayout({
   children,
@@ -39,14 +42,6 @@ export default async function DashboardLayout({
     operatorAccess || hasActiveWorkspace(preferences, context);
   const isTrial = !workspaceActive;
 
-  if (
-    !operatorAccess &&
-    !impersonating &&
-    isAccountLocked(preferences) &&
-    !preferences.expiry_notified
-  ) {
-    await ensureTrialExpiryNotifications(effectiveUserId);
-  }
   let trialExpiresAt = preferences.trial_expires_at;
 
   const fallbackFromUserCreatedAt = effectiveUserCreatedAt
@@ -75,6 +70,26 @@ export default async function DashboardLayout({
       console.error("[dashboard-layout] trial banner fallback upsert failed:", error.message);
     }
     trialExpiresAt = fallbackExpiry;
+  }
+
+  const prefsForTrial = withFallbackTrialExpiry(
+    {
+      ...preferences,
+      trial_expires_at: trialExpiresAt,
+    },
+    effectiveUserCreatedAt
+  );
+
+  if (!operatorAccess && !impersonating && !preferences.expiry_notified) {
+    const locked = await isWorkspaceLocked(
+      dataSupabase,
+      effectiveUserId,
+      prefsForTrial,
+      effectiveUserCreatedAt
+    );
+    if (locked) {
+      await ensureTrialExpiryNotifications(effectiveUserId);
+    }
   }
 
   const expiresAtMs = trialExpiresAt ? new Date(trialExpiresAt).getTime() : null;
