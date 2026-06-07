@@ -155,7 +155,7 @@ export function SettingsPageClient({
       }
       setCancelDialogOpen(false);
       showToast(
-        "Cancellation request sent. We'll confirm once your subscription has been cancelled."
+        "Cancellation request sent. You will receive confirmation by email shortly."
       );
     });
   }
@@ -387,14 +387,13 @@ export function SettingsPageClient({
                 Cancel Subscription
               </CardTitle>
               <CardDescription>
-                Request to end your Pro subscription. Your access continues until
-                we process the cancellation in Revolut.
+                Request to end your Pro subscription.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <p className="text-sm text-zinc-600">
-                Clicking the button below notifies our team. We will cancel your
-                subscription manually and confirm with you by email.
+                Clicking the button below notifies our team of your cancellation
+                request. You will receive confirmation shortly after via email.
               </p>
               {cancelError ? (
                 <p className="text-sm text-red-600" role="alert">
@@ -448,8 +447,8 @@ export function SettingsPageClient({
               Request subscription cancellation?
             </DialogTitle>
             <DialogDescription>
-              We will be notified and will cancel your subscription manually in
-              Revolut. Your Pro access stays active until that is complete.
+              Our team will be notified of your cancellation request. You will
+              receive confirmation by email shortly.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="border-0 bg-transparent sm:justify-end">
