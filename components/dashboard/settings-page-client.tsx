@@ -145,6 +145,21 @@ export function SettingsPageClient({
     showToast("Please contact support to delete your account.");
   }
 
+  function handleConfirmCancelSubscription() {
+    setCancelError(null);
+    startCancelTransition(async () => {
+      const result = await requestSubscriptionCancellation();
+      if (result.error) {
+        setCancelError(result.error);
+        return;
+      }
+      setCancelDialogOpen(false);
+      showToast(
+        "Cancellation request sent. We'll confirm once your subscription has been cancelled."
+      );
+    });
+  }
+
   return (
     <>
       {toast ? (
