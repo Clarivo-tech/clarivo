@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrgContext } from "@/lib/team/types";
-import { isAccountLocked, type TrialPrefs } from "@/lib/trial/access";
+import {
+  isAccountLocked,
+  isAwaitingPayment,
+  type TrialPrefs,
+} from "@/lib/trial/access";
 
 export function withFallbackTrialExpiry(
   prefs: TrialPrefs,
@@ -11,7 +15,7 @@ export function withFallbackTrialExpiry(
   }
 
   const status = (prefs.subscription_status ?? "").toLowerCase();
-  if (status === "active" || status === "expired") {
+  if (status === "active" || isAwaitingPayment(prefs)) {
     return prefs;
   }
 

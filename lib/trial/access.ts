@@ -5,10 +5,15 @@ export type TrialPrefs = {
   trial_used?: boolean | null;
 };
 
+export function isAwaitingPayment(prefs: TrialPrefs): boolean {
+  const status = (prefs.subscription_status ?? "").toLowerCase();
+  return status === "pending_payment" || status === "expired";
+}
+
 export function isTrialExpired(prefs: TrialPrefs, now = Date.now()): boolean {
   const status = (prefs.subscription_status ?? "trial").toLowerCase();
   if (status === "active") return false;
-  if (status === "expired") return true;
+  if (isAwaitingPayment(prefs)) return true;
 
   const expiresAt = prefs.trial_expires_at
     ? new Date(prefs.trial_expires_at).getTime()
@@ -21,7 +26,7 @@ export function isTrialExpired(prefs: TrialPrefs, now = Date.now()): boolean {
 export function isAccountLocked(prefs: TrialPrefs, now = Date.now()): boolean {
   const status = (prefs.subscription_status ?? "").toLowerCase();
   if (status === "active") return false;
-  if (status === "expired") return true;
+  if (isAwaitingPayment(prefs)) return true;
   if (status === "trial") {
     return isTrialExpired(prefs, now);
   }

@@ -8,6 +8,7 @@ import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { bypassesTrialRestrictions } from "@/lib/admin/access";
 import { ensureTrialExpiryNotifications } from "@/lib/trial/notify-trial-expired";
+import { isAwaitingPayment } from "@/lib/trial/access";
 import {
   hasActiveWorkspace,
   isWorkspaceLocked,
@@ -40,7 +41,8 @@ export default async function DashboardLayout({
   const operatorAccess = bypassesTrialRestrictions(user.email, impersonating);
   const workspaceActive =
     operatorAccess || hasActiveWorkspace(preferences, context);
-  const isTrial = !workspaceActive;
+  const awaitingPayment = isAwaitingPayment(preferences);
+  const isTrial = !workspaceActive && !awaitingPayment;
 
   let trialExpiresAt = preferences.trial_expires_at;
 
@@ -50,7 +52,7 @@ export default async function DashboardLayout({
       ).toISOString()
     : null;
 
-  if (isTrial && !trialExpiresAt) {
+  if (isTrial && !trialExpiresAt && !awaitingPayment) {
     const nowIso = new Date().toISOString();
     const fallbackExpiry =
       fallbackFromUserCreatedAt ??

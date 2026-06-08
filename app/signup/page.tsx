@@ -109,7 +109,10 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    if (!paidIntent) {
+    const isPaidSignup =
+      new URLSearchParams(window.location.search).get("intent") !== "trial";
+
+    if (!isPaidSignup) {
       try {
         const eligibilityRes = await fetch("/api/auth/trial-eligibility", {
           method: "POST",
@@ -171,11 +174,11 @@ export default function SignupPage() {
         } catch {
           // fall through to generic message
         }
-        if (paidIntent) {
+        if (isPaidSignup) {
           const encodedEmail = encodeURIComponent(trimmed.email);
-          router.push(`/login?redirect=/dashboard/upgrade&email=${encodedEmail}`);
-          router.refresh();
-          setLoading(false);
+          window.location.assign(
+            `/login?redirect=/dashboard/upgrade&email=${encodedEmail}`
+          );
           return;
         }
         setError("An account with this email already exists. Please sign in.");
@@ -206,10 +209,10 @@ export default function SignupPage() {
       last_name: trimmed.lastName,
       company: trimmed.company,
       job_title: trimmed.jobTitle,
-      trial_started_at: paidIntent ? null : now.toISOString(),
-      trial_expires_at: paidIntent ? null : trialExpiresAt.toISOString(),
-      subscription_status: paidIntent ? "expired" : "trial",
-      trial_used: true,
+      trial_started_at: isPaidSignup ? null : now.toISOString(),
+      trial_expires_at: isPaidSignup ? null : trialExpiresAt.toISOString(),
+      subscription_status: isPaidSignup ? "pending_payment" : "trial",
+      trial_used: isPaidSignup ? false : true,
       updated_at: now.toISOString(),
     };
 
@@ -289,26 +292,22 @@ export default function SignupPage() {
       console.error("[signup] welcome/founder email failed:", emailError);
     }
 
-    if (paidIntent) {
+    if (isPaidSignup) {
       if (hasSession) {
-        router.push(UPGRADE_PAGE_PATH);
-        router.refresh();
+        window.location.assign(UPGRADE_PAGE_PATH);
         return;
       }
-      router.push("/login?redirect=/dashboard/upgrade");
-      router.refresh();
+      window.location.assign("/login?redirect=/dashboard/upgrade");
       return;
     }
 
     if (!hasSession) {
       setLoading(false);
-      router.push("/login");
-      router.refresh();
+      window.location.assign("/login");
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    window.location.assign("/dashboard");
   }
 
   return (

@@ -133,8 +133,8 @@ const PLANS = [
       "Multi-currency support",
       "Priority support",
     ],
-    cta: "Start free trial",
-    href: "/signup?intent=trial",
+    cta: "Sign up now",
+    href: "/signup?intent=paid",
     highlighted: true,
   },
 ];

@@ -202,10 +202,10 @@ export function LoginForm() {
           <p className="mt-2 text-center text-sm text-zinc-500">
             New to Clarivo?{" "}
             <Link
-              href="/signup"
+              href="/signup?intent=paid"
               className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
             >
-              Start free trial
+              Sign up now
             </Link>
           </p>
         </CardContent>
