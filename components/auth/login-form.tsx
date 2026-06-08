@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isAccountLocked } from "@/lib/trial/access";
+import { isAccountLocked, isAwaitingPayment } from "@/lib/trial/access";
 import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 
 export function LoginForm() {
@@ -87,7 +87,11 @@ export function LoginForm() {
         });
 
       if (locked) {
-        window.location.assign(safeRedirect ?? "/dashboard/upgrade");
+        const paymentDestination =
+          prefs && isAwaitingPayment(prefs)
+            ? "/dashboard/upgrade?checkout=1"
+            : safeRedirect ?? "/dashboard/upgrade";
+        window.location.assign(paymentDestination);
         return;
       }
     }
@@ -193,7 +197,7 @@ export function LoginForm() {
           <p className="mt-6 text-center text-sm text-zinc-500">
             Need full access after your trial?{" "}
             <Link
-              href="/login?redirect=/dashboard/upgrade"
+              href="/login?redirect=%2Fdashboard%2Fupgrade%3Fcheckout%3D1"
               className="font-medium text-[#F97316] hover:text-[#111827] hover:underline"
             >
               Sign in to upgrade

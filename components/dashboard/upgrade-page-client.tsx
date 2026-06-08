@@ -22,6 +22,7 @@ export function UpgradePageClient({
   isOwner,
   paymentSuccess,
   addLicensesMode = false,
+  autoCheckout = false,
 }: {
   organisationName: string;
   currentLicenses: number;
@@ -29,6 +30,7 @@ export function UpgradePageClient({
   isOwner: boolean;
   paymentSuccess?: boolean;
   addLicensesMode?: boolean;
+  autoCheckout?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,6 +117,13 @@ export function UpgradePageClient({
     };
   }, [paymentSuccess, isOwner, isPaymentReturn, router]);
 
+  useEffect(() => {
+    if (!autoCheckout || !isOwner || isAddMode || isPaymentReturn || loading) {
+      return;
+    }
+    void handleCheckout();
+  }, [autoCheckout, isOwner, isAddMode, isPaymentReturn]);
+
   async function handleCheckout() {
     setError(null);
     setSuccessMessage(null);
@@ -196,6 +205,17 @@ export function UpgradePageClient({
           <Button render={<Link href="/dashboard" />} variant="outline">
             Back to dashboard
           </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (autoCheckout && loading && !error) {
+    return (
+      <Card className="border-orange-100/80 shadow-lg">
+        <CardContent className="flex flex-col items-center gap-4 py-16">
+          <Loader2 className="size-8 animate-spin text-[#F97316]" />
+          <p className="text-sm text-zinc-600">Redirecting to secure payment…</p>
         </CardContent>
       </Card>
     );

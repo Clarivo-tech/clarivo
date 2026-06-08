@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
+import { CHECKOUT_UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
 import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 
 function RequiredLabel({
@@ -176,8 +176,9 @@ export default function SignupPage() {
         }
         if (isPaidSignup) {
           const encodedEmail = encodeURIComponent(trimmed.email);
+          const redirect = encodeURIComponent(CHECKOUT_UPGRADE_PAGE_PATH);
           window.location.assign(
-            `/login?redirect=/dashboard/upgrade&email=${encodedEmail}`
+            `/login?redirect=${redirect}&email=${encodedEmail}`
           );
           return;
         }
@@ -198,70 +199,40 @@ export default function SignupPage() {
 
     const hasSession = Boolean(data.session);
 
-    const now = new Date();
-    const trialExpiresAt = new Date(now);
-    // Temporary test window: expire trial 5 minutes after signup.
+    const trialExpiresAt = new Date();
     trialExpiresAt.setMinutes(trialExpiresAt.getMinutes() + 5);
 
-    const preferencesBase = {
-      user_id: userId,
-      first_name: trimmed.firstName,
-      last_name: trimmed.lastName,
-      company: trimmed.company,
-      job_title: trimmed.jobTitle,
-      trial_started_at: isPaidSignup ? null : now.toISOString(),
-      trial_expires_at: isPaidSignup ? null : trialExpiresAt.toISOString(),
-      subscription_status: isPaidSignup ? "pending_payment" : "trial",
-      trial_used: isPaidSignup ? false : true,
-      updated_at: now.toISOString(),
-    };
-
-    let prefError: { message: string } | null = null;
-
-    const withContact = await supabase
-      .from("user_preferences")
-      .upsert(
-        {
-          ...preferencesBase,
-          contact_number: trimmed.contactNumber,
-        },
-        { onConflict: "user_id" }
-      );
-
-    prefError = withContact.error;
-
-    if (
-      prefError?.message?.toLowerCase().includes("contact_number")
-    ) {
-      const fallback = await supabase
-        .from("user_preferences")
-        .upsert(preferencesBase, { onConflict: "user_id" });
-      prefError = fallback.error;
-    }
-
-    if (prefError) {
-      // Never block account creation on profile upsert failures.
-      // This can fail in edge auth states (no session yet), schema drift, or RLS timing.
-      console.error("[signup] user_preferences upsert failed:", prefError.message);
-    }
-
     try {
-      const orgResponse = await fetch("/api/auth/setup-organisation", {
+      const finalizeRes = await fetch("/api/auth/finalize-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company: trimmed.company }),
+        body: JSON.stringify({
+          userId,
+          email: trimmed.email,
+          firstName: trimmed.firstName,
+          lastName: trimmed.lastName,
+          company: trimmed.company,
+          jobTitle: trimmed.jobTitle,
+          contactNumber: trimmed.contactNumber,
+          paidSignup: isPaidSignup,
+        }),
       });
-      if (!orgResponse.ok) {
-        const orgPayload = (await orgResponse.json().catch(() => ({}))) as {
+
+      if (!finalizeRes.ok) {
+        const payload = (await finalizeRes.json().catch(() => ({}))) as {
           error?: string;
         };
-        console.error(
-          "[signup] organisation setup failed:",
-          orgPayload.error ?? orgResponse.statusText
+        setError(
+          payload.error ??
+            "Account created but setup failed. Please sign in and try again."
         );
+        setLoading(false);
+        return;
       }
-    } catch (orgError) {
-      console.error("[signup] organisation setup failed:", orgError);
+    } catch {
+      setError("Account created but setup failed. Please sign in and try again.");
+      setLoading(false);
+      return;
     }
 
     try {
@@ -274,7 +245,7 @@ export default function SignupPage() {
           email: trimmed.email,
           company: trimmed.company,
           jobTitle: trimmed.jobTitle,
-          trialExpiresAt: paidIntent ? null : trialExpiresAt.toISOString(),
+          trialExpiresAt: isPaidSignup ? null : trialExpiresAt.toISOString(),
         }),
       });
 
@@ -293,11 +264,14 @@ export default function SignupPage() {
     }
 
     if (isPaidSignup) {
+      const destination = CHECKOUT_UPGRADE_PAGE_PATH;
       if (hasSession) {
-        window.location.assign(UPGRADE_PAGE_PATH);
+        window.location.assign(destination);
         return;
       }
-      window.location.assign("/login?redirect=/dashboard/upgrade");
+      window.location.assign(
+        `/login?redirect=${encodeURIComponent(destination)}`
+      );
       return;
     }
 

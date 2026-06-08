@@ -6,6 +6,7 @@ import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { getPricePerLicenseGbp } from "@/lib/billing/constants";
 import { syncLatestPendingPaymentForUser } from "@/lib/billing/sync-pending-payment";
+import { isAwaitingPayment } from "@/lib/trial/access";
 import { findActiveStripeSubscriptionForOrganisation } from "@/lib/billing/stripe";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { UpgradePageClient } from "@/components/dashboard/upgrade-page-client";
@@ -61,10 +62,11 @@ function isFullySubscribed(
 export default async function UpgradePage({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string; add?: string }>;
+  searchParams: Promise<{ payment?: string; add?: string; checkout?: string }>;
 }) {
-  const { payment, add } = await searchParams;
+  const { payment, add, checkout } = await searchParams;
   const addLicensesMode = add === "1";
+  const autoCheckout = checkout === "1";
   const returnPath =
     payment === "success"
       ? addLicensesMode
@@ -148,6 +150,11 @@ export default async function UpgradePage({
           isOwner={context?.role === "owner"}
           paymentSuccess={payment === "success"}
           addLicensesMode={addLicensesMode}
+          autoCheckout={
+            autoCheckout &&
+            !addLicensesMode &&
+            isAwaitingPayment(preferences)
+          }
         />
       </Suspense>
     </div>

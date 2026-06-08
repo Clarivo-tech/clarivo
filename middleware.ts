@@ -7,6 +7,7 @@ import {
   IMPERSONATE_USER_COOKIE,
 } from "@/lib/admin/constants";
 import { bypassesTrialRestrictions, isPlatformAdmin } from "@/lib/admin/access";
+import { isAwaitingPayment } from "@/lib/trial/access";
 import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
 import { scheduleTrialExpiryEmails } from "@/lib/trial/schedule-trial-expiry-emails";
 import {
@@ -97,10 +98,22 @@ function requiresTrialCheck(pathname: string): boolean {
   return isProtectedRoute(pathname) || pathname === "/trial-expired";
 }
 
-function redirectLockedUserToUpgrade(request: NextRequest): NextResponse {
+function redirectLockedUserToUpgrade(
+  request: NextRequest,
+  prefs?: {
+    subscription_status: string | null;
+    trial_expires_at: string | null;
+  } | null
+): NextResponse {
   const url = request.nextUrl.clone();
   url.pathname = "/dashboard/upgrade";
-  if (!url.searchParams.has("payment")) {
+  if (
+    isAwaitingPayment(
+      prefs ?? { subscription_status: null, trial_expires_at: null }
+    )
+  ) {
+    url.search = "checkout=1";
+  } else if (!url.searchParams.has("payment")) {
     url.search = "";
   }
   return NextResponse.redirect(url);
@@ -176,7 +189,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
       if (!prefs.expiry_notified) {
         scheduleTrialExpiryEmails(event, request, user.id);
       }
-      return redirectLockedUserToUpgrade(request);
+      return redirectLockedUserToUpgrade(request, prefs);
     }
 
     const url = request.nextUrl.clone();
@@ -326,7 +339,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
           );
         }
 
-        return redirectLockedUserToUpgrade(request);
+        return redirectLockedUserToUpgrade(request, prefs);
       }
     }
   }
