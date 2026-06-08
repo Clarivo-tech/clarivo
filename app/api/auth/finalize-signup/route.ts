@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/api/auth";
+import { upsertSignupPreferences } from "@/lib/auth/upsert-signup-preferences";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -19,53 +19,6 @@ type FinalizeBody = {
   contactNumber?: string;
   paidSignup?: boolean;
 };
-
-async function upsertSignupPreferences(
-  db: SupabaseClient,
-  params: {
-    userId: string;
-    body: FinalizeBody;
-    paidSignup: boolean;
-  }
-): Promise<{ error?: string }> {
-  const now = new Date();
-  const trialExpiresAt = new Date(now);
-  trialExpiresAt.setMinutes(trialExpiresAt.getMinutes() + 5);
-
-  const preferencesBase = {
-    user_id: params.userId,
-    first_name: params.body.firstName?.trim() ?? null,
-    last_name: params.body.lastName?.trim() ?? null,
-    company: params.body.company?.trim() ?? null,
-    job_title: params.body.jobTitle?.trim() ?? null,
-    trial_started_at: params.paidSignup ? null : now.toISOString(),
-    trial_expires_at: params.paidSignup ? null : trialExpiresAt.toISOString(),
-    subscription_status: params.paidSignup ? "pending_payment" : "trial",
-    trial_used: params.paidSignup ? false : true,
-    updated_at: now.toISOString(),
-  };
-
-  const withContact = await db.from("user_preferences").upsert(
-    {
-      ...preferencesBase,
-      contact_number: params.body.contactNumber?.trim() ?? null,
-    },
-    { onConflict: "user_id" }
-  );
-
-  if (withContact.error?.message?.toLowerCase().includes("contact_number")) {
-    const fallback = await db
-      .from("user_preferences")
-      .upsert(preferencesBase, { onConflict: "user_id" });
-    if (fallback.error) {
-      return { error: fallback.error.message };
-    }
-  } else if (withContact.error) {
-    return { error: withContact.error.message };
-  }
-
-  return {};
-}
 
 export async function POST(request: Request) {
   let body: FinalizeBody;
@@ -95,7 +48,11 @@ export async function POST(request: Request) {
 
     const prefResult = await upsertSignupPreferences(auth.supabase, {
       userId,
-      body,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      company: body.company,
+      jobTitle: body.jobTitle,
+      contactNumber: body.contactNumber,
       paidSignup,
     });
     if (prefResult.error) {
@@ -155,7 +112,11 @@ export async function POST(request: Request) {
 
   const prefResult = await upsertSignupPreferences(admin, {
     userId,
-    body,
+    firstName: body.firstName,
+    lastName: body.lastName,
+    company: body.company,
+    jobTitle: body.jobTitle,
+    contactNumber: body.contactNumber,
     paidSignup,
   });
   if (prefResult.error) {
