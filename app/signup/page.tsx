@@ -206,6 +206,7 @@ export default function SignupPage() {
       const finalizeRes = await fetch("/api/auth/finalize-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           userId,
           email: trimmed.email,

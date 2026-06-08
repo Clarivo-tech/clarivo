@@ -23,6 +23,7 @@ export function UpgradePageClient({
   paymentSuccess,
   addLicensesMode = false,
   autoCheckout = false,
+  awaitingPayment = false,
 }: {
   organisationName: string;
   currentLicenses: number;
@@ -31,6 +32,7 @@ export function UpgradePageClient({
   paymentSuccess?: boolean;
   addLicensesMode?: boolean;
   autoCheckout?: boolean;
+  awaitingPayment?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -237,11 +239,16 @@ export function UpgradePageClient({
               {currentLicenses === 1 ? "" : "s"} on {organisationName}. Choose how
               many more teammates you want to invite.
             </>
+          ) : awaitingPayment || autoCheckout ? (
+            <>
+              Complete payment to activate {organisationName}. Each license lets one
+              person access your organisation&apos;s contracts and data.
+            </>
           ) : (
             <>
-              Upgrade {organisationName} after your free trial. Each license lets one
-              person access your organisation&apos;s contracts and data. Invited
-              teammates must use the same company email domain as you.
+              Upgrade {organisationName}. Each license lets one person access your
+              organisation&apos;s contracts and data. Invited teammates must use the
+              same company email domain as you.
             </>
           )}
         </CardDescription>

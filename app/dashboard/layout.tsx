@@ -52,7 +52,12 @@ export default async function DashboardLayout({
       ).toISOString()
     : null;
 
-  if (isTrial && !trialExpiresAt && !awaitingPayment) {
+  if (
+    isTrial &&
+    (preferences.subscription_status ?? "").toLowerCase() === "trial" &&
+    !trialExpiresAt &&
+    !awaitingPayment
+  ) {
     const nowIso = new Date().toISOString();
     const fallbackExpiry =
       fallbackFromUserCreatedAt ??

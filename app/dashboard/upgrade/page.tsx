@@ -153,8 +153,9 @@ export default async function UpgradePage({
           autoCheckout={
             autoCheckout &&
             !addLicensesMode &&
-            isAwaitingPayment(preferences)
+            !isFullySubscribed(preferences.subscription_status, context)
           }
+          awaitingPayment={isAwaitingPayment(preferences)}
         />
       </Suspense>
     </div>
