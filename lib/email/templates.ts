@@ -343,7 +343,7 @@ export function founderSubscriptionCancellationRequestEmail(params: {
     "Subscription cancellation request",
     "#DC2626",
     `
-    <p style="margin:0 0 16px 0;color:#444;">A Pro customer requested subscription cancellation from Settings. Cancel manually in Revolut.</p>
+    <p style="margin:0 0 16px 0;color:#444;">A Pro customer requested subscription cancellation from Settings. Cancel manually in Stripe.</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Name</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.customerName}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px;border-bottom:1px solid #eee;"><a href="mailto:${params.email}" style="color:#F97316;">${params.email}</a></td></tr>

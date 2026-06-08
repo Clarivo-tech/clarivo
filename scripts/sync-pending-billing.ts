@@ -1,11 +1,11 @@
 import { createAdminClient } from "../lib/supabase/admin";
-import { fulfillBillingPayment } from "../lib/billing/fulfill-payment";
+import { fulfillBillingSubscription } from "../lib/billing/fulfill-subscription";
 
 async function main() {
   const admin = createAdminClient();
 
-  const { data: payments, error } = await admin
-    .from("billing_payments")
+  const { data: subscriptions, error } = await admin
+    .from("billing_subscriptions")
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
@@ -16,20 +16,22 @@ async function main() {
     process.exit(1);
   }
 
-  if (!payments?.length) {
-    console.log("No pending billing payments.");
+  if (!subscriptions?.length) {
+    console.log("No pending billing subscriptions.");
     return;
   }
 
-  for (const payment of payments) {
-    console.log(`Syncing ${payment.merchant_reference} (${payment.licenses} licenses)…`);
-    const result = await fulfillBillingPayment(admin, payment);
+  for (const subscription of subscriptions) {
+    console.log(
+      `Syncing ${subscription.merchant_reference} (${subscription.licenses} licenses)…`
+    );
+    const result = await fulfillBillingSubscription(admin, subscription);
     if (result.error) {
       console.error("  Error:", result.error);
     } else if (result.fulfilled) {
       console.log("  Activated.");
     } else {
-      console.log("  Not paid yet in Revolut.");
+      console.log("  Not paid yet in Stripe.");
     }
   }
 }

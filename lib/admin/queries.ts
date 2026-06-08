@@ -10,8 +10,8 @@ export type AdminSubscriptionRow = {
   amountPence: number;
   currency: string;
   status: string;
-  revolutSubscriptionId: string | null;
-  revolutState: string | null;
+  stripeSubscriptionId: string | null;
+  stripeStatus: string | null;
   activatedAt: string | null;
   createdAt: string;
 };
@@ -69,8 +69,8 @@ export async function fetchAdminSubscriptions(): Promise<AdminSubscriptionRow[]>
       amount_pence,
       currency,
       status,
-      revolut_subscription_id,
-      revolut_state,
+      stripe_subscription_id,
+      stripe_status,
       activated_at,
       created_at,
       organisations ( name )
@@ -103,8 +103,8 @@ export async function fetchAdminSubscriptions(): Promise<AdminSubscriptionRow[]>
         amountPence: row.amount_pence as number,
         currency: row.currency as string,
         status: row.status as string,
-        revolutSubscriptionId: row.revolut_subscription_id as string | null,
-        revolutState: row.revolut_state as string | null,
+        stripeSubscriptionId: row.stripe_subscription_id as string | null,
+        stripeStatus: row.stripe_status as string | null,
         activatedAt: row.activated_at as string | null,
         createdAt: row.created_at as string,
       };

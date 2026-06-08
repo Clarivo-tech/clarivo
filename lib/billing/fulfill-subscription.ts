@@ -1,38 +1,97 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { activateOrganisationLicenses } from "@/lib/billing/activate-licenses";
+import { licensesToAmountPence } from "@/lib/billing/constants";
 import { sendPaymentConfirmationEmailsOnce } from "@/lib/billing/send-payment-confirmation-once";
 import {
-  getSubscriptionVariationDetails,
-  isRevolutSubscriptionActive,
-  isUsageBillingVariation,
-  reportSubscriptionLicenseUsage,
-  retrieveRevolutSubscription,
-  revolutIdempotencyKey,
-} from "@/lib/billing/revolut-subscriptions";
-import {
-  isRevolutOrderPaid,
-  retrieveRevolutOrder,
-} from "@/lib/billing/revolut";
+  getStripe,
+  isStripeSubscriptionActive,
+  subscriptionQuantity,
+} from "@/lib/billing/stripe";
 
 export type BillingSubscriptionRow = {
   id: string;
   organisation_id: string;
   user_id: string;
-  plan_variation_id: string | null;
-  revolut_subscription_id: string | null;
-  revolut_setup_order_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_checkout_session_id: string | null;
   licenses: number;
   status: string;
 };
+
+async function resolveStripeSubscriptionId(
+  subscription: BillingSubscriptionRow,
+  options?: { trustActive?: boolean }
+): Promise<{ subscriptionId?: string; status?: string; error?: string }> {
+  if (options?.trustActive && subscription.stripe_subscription_id) {
+    return {
+      subscriptionId: subscription.stripe_subscription_id,
+      status: "active",
+    };
+  }
+
+  const stripe = getStripe();
+
+  if (subscription.stripe_subscription_id) {
+    try {
+      const remote = await stripe.subscriptions.retrieve(
+        subscription.stripe_subscription_id
+      );
+      return {
+        subscriptionId: remote.id,
+        status: remote.status,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not verify Stripe subscription.";
+      return { error: message };
+    }
+  }
+
+  if (subscription.stripe_checkout_session_id) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(
+        subscription.stripe_checkout_session_id,
+        { expand: ["subscription"] }
+      );
+
+      if (session.payment_status !== "paid") {
+        return { error: "Checkout session is not paid yet." };
+      }
+
+      const sub = session.subscription;
+      if (!sub || typeof sub === "string") {
+        return { error: "Checkout session has no subscription." };
+      }
+
+      return {
+        subscriptionId: sub.id,
+        status: sub.status,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not verify Stripe checkout session.";
+      return { error: message };
+    }
+  }
+
+  return {
+    error: "Missing Stripe subscription id for verification.",
+  };
+}
 
 export async function fulfillBillingSubscription(
   admin: SupabaseClient,
   subscription: BillingSubscriptionRow,
   options?: {
-    revolutEvent?: string;
     ownerEmail?: string | null;
     trustActive?: boolean;
-    revolutState?: string;
+    stripeStatus?: string;
+    stripeSubscriptionId?: string;
+    licenses?: number;
   }
 ): Promise<{ fulfilled: boolean; error?: string }> {
   const { data: owner } = await admin.auth.admin.getUserById(subscription.user_id);
@@ -46,60 +105,35 @@ export async function fulfillBillingSubscription(
     return { fulfilled: true };
   }
 
-  let revolutState = options?.revolutState;
+  let stripeStatus = options?.stripeStatus;
+  let stripeSubscriptionId =
+    options?.stripeSubscriptionId ?? subscription.stripe_subscription_id;
+  let licenses = options?.licenses ?? subscription.licenses;
 
-  if (!options?.trustActive && subscription.revolut_subscription_id) {
-    try {
-      const remote = await retrieveRevolutSubscription(
-        subscription.revolut_subscription_id
-      );
-      revolutState = remote.state;
-      if (!isRevolutSubscriptionActive(remote.state)) {
-        if (subscription.revolut_setup_order_id) {
-          try {
-            const order = await retrieveRevolutOrder(
-              subscription.revolut_setup_order_id
-            );
-            if (!isRevolutOrderPaid(order.state)) {
-              return { fulfilled: false };
-            }
-          } catch {
-            return { fulfilled: false };
-          }
-        } else {
-          return { fulfilled: false };
-        }
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Could not verify Revolut subscription.";
-      return { fulfilled: false, error: message };
+  if (!options?.trustActive) {
+    const resolved = await resolveStripeSubscriptionId(subscription, options);
+    if (resolved.error) {
+      return { fulfilled: false, error: resolved.error };
     }
-  } else if (!options?.trustActive && subscription.revolut_setup_order_id) {
-    try {
-      const order = await retrieveRevolutOrder(subscription.revolut_setup_order_id);
-      if (!isRevolutOrderPaid(order.state)) {
-        return { fulfilled: false };
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not verify setup payment.";
-      return { fulfilled: false, error: message };
+    if (!resolved.subscriptionId || !isStripeSubscriptionActive(resolved.status)) {
+      return { fulfilled: false };
     }
-  } else if (!options?.trustActive) {
-    return {
-      fulfilled: false,
-      error: "Missing Revolut subscription id for verification.",
-    };
+    stripeSubscriptionId = resolved.subscriptionId;
+    stripeStatus = resolved.status;
+
+    try {
+      const remote = await getStripe().subscriptions.retrieve(stripeSubscriptionId);
+      licenses = subscriptionQuantity(remote);
+    } catch {
+      // keep stored license count
+    }
   }
 
   const activation = await activateOrganisationLicenses(admin, {
     organisationId: subscription.organisation_id,
     ownerUserId: subscription.user_id,
     ownerEmail,
-    licenses: subscription.licenses,
+    licenses,
   });
 
   if (activation.error) {
@@ -111,8 +145,10 @@ export async function fulfillBillingSubscription(
     .from("billing_subscriptions")
     .update({
       status: "active",
-      revolut_state: revolutState ?? "active",
-      revolut_event: options?.revolutEvent ?? null,
+      stripe_subscription_id: stripeSubscriptionId,
+      stripe_status: stripeStatus ?? "active",
+      licenses,
+      amount_pence: licensesToAmountPence(licenses),
       activated_at: now,
       updated_at: now,
     })
@@ -123,35 +159,15 @@ export async function fulfillBillingSubscription(
     return { fulfilled: false, error: updateError.message };
   }
 
-  if (subscription.revolut_subscription_id && subscription.plan_variation_id) {
-    const usageBilling = await isUsageBillingVariation(
-      subscription.plan_variation_id
-    );
-    if (usageBilling) {
-      try {
-        const plan = await getSubscriptionVariationDetails(
-          subscription.plan_variation_id
-        );
-        await reportSubscriptionLicenseUsage({
-          subscriptionId: subscription.revolut_subscription_id,
-          quantity: subscription.licenses,
-          idempotencyKey: revolutIdempotencyKey("activate", subscription.id),
-          usageItemCode: plan.primaryItem.code,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Could not report subscription usage to Revolut.";
-        return { fulfilled: false, error: message };
-      }
+  await sendPaymentConfirmationEmailsOnce(
+    admin,
+    "billing_subscriptions",
+    { ...subscription, licenses },
+    {
+      ownerEmail,
+      isAddLicenses: false,
     }
-  }
-
-  await sendPaymentConfirmationEmailsOnce(admin, "billing_subscriptions", subscription, {
-    ownerEmail,
-    isAddLicenses: false,
-  });
+  );
 
   return { fulfilled: true };
 }
@@ -159,14 +175,13 @@ export async function fulfillBillingSubscription(
 export async function markBillingSubscriptionOverdue(
   admin: SupabaseClient,
   subscription: BillingSubscriptionRow,
-  revolutEvent?: string
+  _stripeEvent?: string
 ): Promise<void> {
   await admin
     .from("billing_subscriptions")
     .update({
       status: "overdue",
-      revolut_state: "overdue",
-      revolut_event: revolutEvent ?? null,
+      stripe_status: "past_due",
       updated_at: new Date().toISOString(),
     })
     .eq("id", subscription.id)
@@ -185,14 +200,13 @@ export async function markBillingSubscriptionCancelled(
   admin: SupabaseClient,
   subscription: BillingSubscriptionRow,
   status: "cancelled" | "finished",
-  revolutEvent?: string
+  _stripeEvent?: string
 ): Promise<void> {
   await admin
     .from("billing_subscriptions")
     .update({
       status,
-      revolut_state: status,
-      revolut_event: revolutEvent ?? null,
+      stripe_status: status === "cancelled" ? "canceled" : status,
       updated_at: new Date().toISOString(),
     })
     .eq("id", subscription.id);
@@ -204,4 +218,55 @@ export async function markBillingSubscriptionCancelled(
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", subscription.user_id);
+}
+
+export async function syncActiveSubscriptionLicenseCount(
+  admin: SupabaseClient,
+  organisationId: string,
+  newTotal: number
+): Promise<{ error?: string }> {
+  const { data: activeSub } = await admin
+    .from("billing_subscriptions")
+    .select("*")
+    .eq("organisation_id", organisationId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!activeSub?.stripe_subscription_id) {
+    return {};
+  }
+
+  const { updateStripeSubscriptionQuantity } = await import("@/lib/billing/stripe");
+
+  try {
+    const updated = await updateStripeSubscriptionQuantity({
+      subscriptionId: activeSub.stripe_subscription_id,
+      quantity: newTotal,
+    });
+
+    const now = new Date().toISOString();
+    const { error } = await admin
+      .from("billing_subscriptions")
+      .update({
+        licenses: newTotal,
+        amount_pence: licensesToAmountPence(newTotal),
+        stripe_status: updated.status,
+        updated_at: now,
+      })
+      .eq("id", activeSub.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {};
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Could not update Stripe subscription quantity.";
+    return { error: message };
+  }
 }

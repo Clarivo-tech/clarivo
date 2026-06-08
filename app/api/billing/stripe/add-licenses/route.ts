@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api/auth";
 import { createAdminClient, tryCreateAdminClient } from "@/lib/supabase/admin";
 import { MAX_LICENSES } from "@/lib/billing/constants";
-import { isRevolutConfigured } from "@/lib/billing/revolut";
+import { isStripeConfigured } from "@/lib/billing/stripe";
 import { updateSubscriptionLicenses } from "@/lib/billing/update-subscription-licenses";
 import { getOrgContextForTeam } from "@/lib/team/org";
 
 export async function POST(request: Request) {
-  if (!isRevolutConfigured()) {
+  if (!isStripeConfigured()) {
     return NextResponse.json(
-      { error: "Revolut is not configured." },
+      { error: "Stripe is not configured." },
       { status: 500 }
     );
   }
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   const auth = await requireUser();
   if (!auth.user) return auth.response;
 
-  const billingDb = auth.dataSupabase;
+  const billingDb = tryCreateAdminClient() ?? auth.supabase;
 
   let body: { licenses?: number };
   try {
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     user: billingUser,
     context,
     newTotal,
+    ownerEmail: billingUser.email,
   });
 
   if (!result.ok) {
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     mode: "checkout",
     checkoutUrl: result.checkoutUrl,
-    orderId: result.orderId,
+    sessionId: result.sessionId,
     merchantReference: result.merchantReference,
     currentLicenses: result.currentLicenses,
     newTotal: result.newTotal,

@@ -76,7 +76,7 @@ export function UpgradePageClient({
       setError(null);
 
       try {
-        const res = await fetch("/api/billing/revolut/sync-latest", {
+        const res = await fetch("/api/billing/stripe/sync-latest", {
           method: "POST",
         });
         const payload = (await res.json()) as {
@@ -120,8 +120,8 @@ export function UpgradePageClient({
 
     try {
       const endpoint = isAddMode
-        ? "/api/billing/revolut/add-licenses"
-        : "/api/billing/revolut/create-subscription";
+        ? "/api/billing/stripe/add-licenses"
+        : "/api/billing/stripe/create-subscription";
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -217,7 +217,7 @@ export function UpgradePageClient({
         {isLocalDev && !isPaymentReturn ? (
           <Alert>
             <AlertDescription>
-              Local testing: after payment, Revolut returns you to{" "}
+              Local testing: after payment, Stripe returns you to{" "}
               <strong>clarivo-tech.com</strong> on My Team to confirm. Open My Team
               on localhost and refresh — your licenses use the same account.
             </AlertDescription>
@@ -283,12 +283,12 @@ export function UpgradePageClient({
               <>
                 Adding {additionalLicenses} license
                 {additionalLicenses === 1 ? "" : "s"} ({currentLicenses} → {licenses}).
-                Your Revolut monthly subscription updates to this seat count — future
+                Your Stripe monthly subscription updates to this seat count — future
                 invoices reflect the new total.
               </>
             ) : (
               <>
-                Billed monthly via Revolut. Includes you as the first license.
+                Billed monthly via Stripe. Includes you as the first license.
                 Unused licenses can be assigned when you invite colleagues on My Team.
               </>
             )}
@@ -323,7 +323,7 @@ export function UpgradePageClient({
               href={checkoutUrl}
               className="font-medium text-[#F97316] hover:underline"
             >
-              Open Revolut checkout
+              Open Stripe checkout
             </a>
           </p>
         ) : null}
@@ -339,8 +339,8 @@ export function UpgradePageClient({
 
         <p className="text-center text-xs text-zinc-500">
           {isAddMode
-            ? "You\u2019ll pay for the additional licenses on Revolut\u2019s secure checkout page, then your seat count updates on My Team."
-            : "You\u2019ll set up a monthly subscription on Revolut\u2019s secure checkout page."}
+            ? "You\u2019ll pay for the additional licenses on Stripe\u2019s secure checkout page, then your seat count updates on My Team."
+            : "You\u2019ll set up a monthly subscription on Stripe\u2019s secure checkout page."}
           Questions?{" "}
           <a
             href="mailto:hello@clarivo-tech.com"

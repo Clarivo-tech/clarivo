@@ -2,9 +2,8 @@
  * Per Pro license, per month (GBP).
  *
  * - Local / test: defaults to £0.50 when PRICE_PER_LICENSE_GBP is unset.
- * - Production: set PRICE_PER_LICENSE_GBP=99.99 on Vercel, recreate the Revolut
- *   subscription plan (scripts/ensure-revolut-subscription-plan.ps1), and update
- *   REVOLUT_SUBSCRIPTION_PLAN_VARIATION_ID + REVOLUT_SUBSCRIPTION_LICENSE_ITEM_ID.
+ * - Production: set PRICE_PER_LICENSE_GBP=99.99 on Vercel and STRIPE_PRICE_ID
+ *   to your recurring GBP price in Stripe Dashboard.
  */
 export const PRICE_PER_LICENSE_GBP_PRODUCTION = 99.99;
 

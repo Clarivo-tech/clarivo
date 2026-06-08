@@ -24,7 +24,7 @@ export function TeamBillingSync({ isOwner }: { isOwner: boolean }) {
     const run = async () => {
       setSyncing(true);
       try {
-        const res = await fetch("/api/billing/revolut/sync-latest", {
+        const res = await fetch("/api/billing/stripe/sync-latest", {
           method: "POST",
           credentials: "same-origin",
         });

@@ -23,7 +23,7 @@ function isLocalhostUrl(url: string): boolean {
   }
 }
 
-function getConfiguredProductionBaseUrl(): string {
+export function getConfiguredProductionBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   if (configured && !isLocalhostUrl(configured)) {
     return configured;
@@ -32,20 +32,6 @@ function getConfiguredProductionBaseUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
   return "https://clarivo-tech.com";
-}
-
-/**
- * Revolut rejects localhost in redirect URLs — always use a public HTTPS origin here.
- */
-export function getRevolutRedirectBaseUrl(request?: Request): string {
-  if (request) {
-    const origin = request.headers.get("origin");
-    if (origin && isAllowedAppOrigin(origin) && !isLocalhostUrl(origin)) {
-      return origin.replace(/\/$/, "");
-    }
-  }
-
-  return getConfiguredProductionBaseUrl();
 }
 
 /** App links in emails/UI; may be localhost during local dev. */

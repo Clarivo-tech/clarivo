@@ -5,7 +5,7 @@ export async function POST() {
   return NextResponse.json(
     {
       error:
-        "Manual license activation is disabled. Complete payment via Revolut checkout on the upgrade page.",
+        "Manual license activation is disabled. Complete payment via Stripe checkout on the upgrade page.",
     },
     { status: 403 }
   );

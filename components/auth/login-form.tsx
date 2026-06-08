@@ -64,7 +64,7 @@ export function LoginForm() {
       safeRedirect?.includes("billing=success")
     ) {
       try {
-        await fetch("/api/billing/revolut/sync-latest", { method: "POST" });
+        await fetch("/api/billing/stripe/sync-latest", { method: "POST" });
       } catch {
         // Upgrade page also syncs server-side.
       }

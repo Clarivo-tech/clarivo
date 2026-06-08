@@ -6,26 +6,21 @@ import {
   MIN_LICENSES,
   licensesToAmountPence,
 } from "@/lib/billing/constants";
-import { getRevolutRedirectBaseUrl, isRevolutConfigured } from "@/lib/billing/revolut";
-import { retrieveRevolutOrder } from "@/lib/billing/revolut";
+import {
+  createSubscriptionCheckoutSession,
+  findOrCreateStripeCustomer,
+  getStripePriceId,
+  isStripeConfigured,
+} from "@/lib/billing/stripe";
 import { updateSubscriptionLicenses } from "@/lib/billing/update-subscription-licenses";
 import { getOrgContextForTeam } from "@/lib/team/org";
-import { getSubscriptionPlanConfig } from "@/lib/billing/subscription-plan-config";
-import {
-  createRevolutSubscription,
-  findOrCreateRevolutCustomer,
-  getSubscriptionVariationDetails,
-  isRevolutSubscriptionsConfigured,
-  subscriptionMonthlyAmountPence,
-  validateVariationUnitPrice,
-} from "@/lib/billing/revolut-subscriptions";
 
 export async function POST(request: Request) {
-  if (!isRevolutConfigured() || !isRevolutSubscriptionsConfigured()) {
+  if (!isStripeConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Revolut subscriptions are not configured. Add REVOLUT_MERCHANT_API_SECRET and REVOLUT_SUBSCRIPTION_PLAN_VARIATION_ID (or run scripts/ensure-revolut-subscription-plan.ps1).",
+          "Stripe is not configured. Add STRIPE_SECRET_KEY and STRIPE_PRICE_ID to your environment.",
       },
       { status: 500 }
     );
@@ -67,7 +62,7 @@ export async function POST(request: Request) {
 
   const { data: existingActive } = await billingDb
     .from("billing_subscriptions")
-    .select("id")
+    .select("id, stripe_subscription_id")
     .eq("organisation_id", context.organisationId)
     .eq("status", "active")
     .maybeSingle();
@@ -79,6 +74,7 @@ export async function POST(request: Request) {
       user: auth.user,
       context,
       newTotal: licenses,
+      ownerEmail: auth.user.email,
     });
     if (!addResult.ok) {
       return NextResponse.json({ error: addResult.error }, { status: addResult.status });
@@ -93,7 +89,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "checkout",
       checkoutUrl: addResult.checkoutUrl,
-      orderId: addResult.orderId,
+      sessionId: addResult.sessionId,
       merchantReference: addResult.merchantReference,
       currentLicenses: addResult.currentLicenses,
       newTotal: addResult.newTotal,
@@ -101,39 +97,15 @@ export async function POST(request: Request) {
     });
   }
 
-  let planConfig;
-  try {
-    planConfig = await getSubscriptionPlanConfig();
-    const planDetails = await getSubscriptionVariationDetails(
-      planConfig.planVariationId
-    );
-    const priceWarning = validateVariationUnitPrice(planDetails);
-    if (priceWarning) {
-      console.warn("[create-subscription]", priceWarning);
-    }
-    if (planDetails.primaryItem.type === "usage") {
-      console.log(
-        "[create-subscription] Usage-based Revolut plan:",
-        planDetails.planName,
-        "— recurring total depends on reported license count."
-      );
-    }
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Subscription plan is not configured.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-
   const merchantReference = `clarivo-sub-${context.organisationId}-${crypto.randomUUID()}`;
   const amountPence = licensesToAmountPence(licenses);
-  const appBase = getRevolutRedirectBaseUrl(request);
-  const redirectUrl = `${appBase}/dashboard/team?billing=success`;
+  const priceId = getStripePriceId();
 
   const { error: insertError } = await billingDb.from("billing_subscriptions").insert({
     organisation_id: context.organisationId,
     user_id: auth.user.id,
     merchant_reference: merchantReference,
-    plan_variation_id: planConfig.planVariationId,
+    stripe_price_id: priceId,
     licenses,
     amount_pence: amountPence,
     currency: "GBP",
@@ -145,53 +117,44 @@ export async function POST(request: Request) {
   }
 
   try {
-    const customer = await findOrCreateRevolutCustomer(
-      auth.user.email ?? "",
-      auth.user.user_metadata?.full_name as string | undefined
-    );
-
-    const revolutSubscription = await createRevolutSubscription({
-      planVariationId: planConfig.planVariationId,
-      licenseItemId: planConfig.licenseItemId ?? undefined,
-      customerId: customer.id,
-      licenses,
-      externalReference: merchantReference,
-      setupOrderRedirectUrl: redirectUrl,
+    const customer = await findOrCreateStripeCustomer({
+      email: auth.user.email ?? "",
+      name: auth.user.user_metadata?.full_name as string | undefined,
+      organisationId: context.organisationId,
+      userId: auth.user.id,
     });
 
-    if (!revolutSubscription.setup_order_id) {
-      throw new Error("Revolut did not return a setup order for this subscription.");
-    }
+    const session = await createSubscriptionCheckoutSession({
+      request,
+      customerId: customer.id,
+      licenses,
+      merchantReference,
+      organisationId: context.organisationId,
+      userId: auth.user.id,
+    });
 
-    const setupOrder = await retrieveRevolutOrder(revolutSubscription.setup_order_id);
-
-    if (!setupOrder.checkout_url) {
-      throw new Error("Revolut did not return a checkout URL for the setup payment.");
+    if (!session.url) {
+      throw new Error("Stripe did not return a checkout URL.");
     }
 
     await billingDb
       .from("billing_subscriptions")
       .update({
-        revolut_customer_id: customer.id,
-        revolut_subscription_id: revolutSubscription.id,
-        revolut_setup_order_id: revolutSubscription.setup_order_id,
-        revolut_state: revolutSubscription.state,
+        stripe_customer_id: customer.id,
+        stripe_checkout_session_id: session.id,
         updated_at: new Date().toISOString(),
       })
       .eq("merchant_reference", merchantReference);
 
     return NextResponse.json({
-      checkoutUrl: setupOrder.checkout_url,
-      subscriptionId: revolutSubscription.id,
-      setupOrderId: revolutSubscription.setup_order_id,
+      checkoutUrl: session.url,
+      sessionId: session.id,
       merchantReference,
-      monthlyAmountPence: subscriptionMonthlyAmountPence(licenses),
+      monthlyAmountPence: amountPence,
     });
   } catch (error) {
     const message =
-      error instanceof Error
-        ? error.message
-        : "Could not create Revolut subscription.";
+      error instanceof Error ? error.message : "Could not create Stripe checkout.";
     await billingDb
       .from("billing_subscriptions")
       .update({

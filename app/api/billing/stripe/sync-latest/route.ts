@@ -26,8 +26,8 @@ export async function POST() {
   const refreshed = await getOrgContextForTeam(auth.supabase, auth.user.id);
   const seatLimit = refreshed?.seatLimit ?? context.seatLimit;
 
-  const { data: payment } = await auth.supabase
-    .from("billing_payments")
+  const { data: subscription } = await auth.supabase
+    .from("billing_subscriptions")
     .select("status")
     .eq("organisation_id", context.organisationId)
     .eq("user_id", auth.user.id)
@@ -37,11 +37,11 @@ export async function POST() {
 
   const completed =
     result.fulfilled ||
-    payment?.status === "completed" ||
+    subscription?.status === "active" ||
     (refreshed?.plan ?? "").toLowerCase() === "pro";
 
   return NextResponse.json({
-    status: completed ? "completed" : payment?.status ?? "pending",
+    status: completed ? "completed" : subscription?.status ?? "pending",
     licenses: seatLimit,
   });
 }

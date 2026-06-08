@@ -119,7 +119,7 @@ export function AdminHubClient({
             Live subscriptions ({subscriptions.length})
           </CardTitle>
           <CardDescription>
-            Active Revolut billing subscriptions across all organisations.
+            Active Stripe billing subscriptions across all organisations.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -132,7 +132,7 @@ export function AdminHubClient({
                 "Owner",
                 "Licenses",
                 "Monthly",
-                "Revolut",
+                "Stripe",
                 "Since",
                 "",
               ]}
@@ -146,7 +146,7 @@ export function AdminHubClient({
                     {formatMoney(row.amountPence, row.currency)}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                    {row.revolutSubscriptionId?.slice(0, 8) ?? "—"}…
+                    {row.stripeSubscriptionId?.slice(0, 8) ?? "—"}…
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {row.activatedAt ? formatDate(row.activatedAt) : "—"}

@@ -1,4 +1,4 @@
-/** In-app upgrade flow (Revolut Merchant API checkout). */
+/** In-app upgrade flow (Stripe Checkout). */
 export const UPGRADE_PAGE_PATH = "/dashboard/upgrade";
 
 /** Add seats for an already-subscribed workspace. */
@@ -9,7 +9,7 @@ export const EXTERNAL_LINK_PROPS = {
   rel: "noopener noreferrer",
 } as const;
 
-/** @deprecated Use in-app `/dashboard/upgrade` + Merchant API checkout. */
+/** @deprecated Use in-app `/dashboard/upgrade` + Stripe Checkout. */
 export function buildLicenseCheckoutUrl(_licenses?: number): string {
   return UPGRADE_PAGE_PATH;
 }
