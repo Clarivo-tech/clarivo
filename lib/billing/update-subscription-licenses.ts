@@ -2,9 +2,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { licensesToAmountPence } from "@/lib/billing/constants";
 import { activateOrganisationLicenses } from "@/lib/billing/activate-licenses";
 import {
-  createSubscriptionCheckoutSession,
   findActiveStripeSubscriptionForOrganisation,
-  findOrCreateStripeCustomer,
   getStripePriceId,
   subscriptionQuantity,
   updateStripeSubscriptionQuantity,
@@ -26,15 +24,6 @@ export type UpdateSubscriptionLicensesResult =
       mode: "subscription_updated";
       currentLicenses: number;
       newTotal: number;
-    }
-  | {
-      ok: true;
-      mode: "checkout";
-      checkoutUrl: string;
-      sessionId: string;
-      merchantReference: string;
-      currentLicenses: number;
-      newTotal: number;
       additionalLicenses: number;
     }
   | { ok: false; status: number; error: string };
@@ -50,7 +39,7 @@ async function updateActiveStripeSubscription(
   if (!params.subscription.stripe_subscription_id) {
     return {
       error:
-        "This workspace uses a legacy billing provider. Contact hello@clarivo-tech.com to migrate to Stripe.",
+        "We could not find your Stripe subscription. Email hello@clarivo-tech.com and we will link your billing.",
     };
   }
 
@@ -115,93 +104,49 @@ async function linkStripeSubscriptionToRow(
   return { ...row, stripe_subscription_id: stripeSubscriptionId };
 }
 
-async function startNewSubscriptionCheckout(
+async function recoverBillingRowFromStripe(
+  billingDb: SupabaseClient,
   params: {
-    request: Request;
-    billingDb: SupabaseClient;
     user: User;
     context: OrgContext;
-    newTotal: number;
-    isAddLicenses: boolean;
+    remote: Awaited<ReturnType<typeof findActiveStripeSubscriptionForOrganisation>>;
   }
-): Promise<UpdateSubscriptionLicensesResult> {
-  const merchantReference = `clarivo-sub-${params.context.organisationId}-${crypto.randomUUID()}`;
-  const priceId = getStripePriceId();
+): Promise<BillingSubscriptionRow | null> {
+  if (!params.remote) {
+    return null;
+  }
 
-  const { error: insertError } = await params.billingDb
+  const priceId = getStripePriceId();
+  const qty = subscriptionQuantity(params.remote);
+  const now = new Date().toISOString();
+
+  const { data: inserted, error: insertError } = await billingDb
     .from("billing_subscriptions")
     .insert({
       organisation_id: params.context.organisationId,
       user_id: params.user.id,
-      merchant_reference: merchantReference,
+      merchant_reference: `clarivo-sub-recover-${params.context.organisationId}-${crypto.randomUUID()}`,
       stripe_price_id: priceId,
-      licenses: params.newTotal,
-      amount_pence: licensesToAmountPence(params.newTotal),
+      stripe_subscription_id: params.remote.id,
+      stripe_status: params.remote.status,
+      licenses: qty,
+      amount_pence: licensesToAmountPence(qty),
       currency: "GBP",
-      status: "pending",
-    });
+      status: "active",
+      activated_at: now,
+      updated_at: now,
+    })
+    .select("*")
+    .single();
 
-  if (insertError) {
-    return { ok: false, status: 500, error: insertError.message };
+  if (insertError || !inserted) {
+    return null;
   }
 
-  try {
-    const customer = await findOrCreateStripeCustomer({
-      email: params.user.email ?? "",
-      name: params.user.user_metadata?.full_name as string | undefined,
-      organisationId: params.context.organisationId,
-      userId: params.user.id,
-    });
-
-    const session = await createSubscriptionCheckoutSession({
-      request: params.request,
-      customerId: customer.id,
-      licenses: params.newTotal,
-      merchantReference,
-      organisationId: params.context.organisationId,
-      userId: params.user.id,
-      addLicensesMode: params.isAddLicenses,
-      currentLicenses: Math.max(1, params.context.seatLimit),
-    });
-
-    if (!session.url) {
-      throw new Error("Stripe did not return a checkout URL.");
-    }
-
-    await params.billingDb
-      .from("billing_subscriptions")
-      .update({
-        stripe_customer_id: customer.id,
-        stripe_checkout_session_id: session.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("merchant_reference", merchantReference);
-
-    return {
-      ok: true,
-      mode: "checkout",
-      checkoutUrl: session.url,
-      sessionId: session.id,
-      merchantReference,
-      currentLicenses: Math.max(1, params.context.seatLimit),
-      newTotal: params.newTotal,
-      additionalLicenses:
-        params.newTotal - Math.max(1, params.context.seatLimit),
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Could not start subscription checkout.";
-    await params.billingDb
-      .from("billing_subscriptions")
-      .update({ status: "failed", updated_at: new Date().toISOString() })
-      .eq("merchant_reference", merchantReference);
-
-    return { ok: false, status: 502, error: message };
-  }
+  return inserted as BillingSubscriptionRow;
 }
 
 export async function updateSubscriptionLicenses(params: {
-  request: Request;
   billingDb: SupabaseClient;
   user: User;
   context: OrgContext;
@@ -209,11 +154,21 @@ export async function updateSubscriptionLicenses(params: {
   ownerEmail?: string | null;
 }): Promise<UpdateSubscriptionLicensesResult> {
   const currentTotal = Math.max(1, params.context.seatLimit);
+  const additionalLicenses = params.newTotal - currentTotal;
+
   if (params.newTotal <= currentTotal) {
     return {
       ok: false,
       status: 400,
-      error: `Choose more than your current ${currentTotal} license${currentTotal === 1 ? "" : "s"}.`,
+      error: `Choose at least 1 additional license.`,
+    };
+  }
+
+  if (!params.user.email) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Your account needs an email address to update billing.",
     };
   }
 
@@ -226,93 +181,52 @@ export async function updateSubscriptionLicenses(params: {
     .limit(1)
     .maybeSingle();
 
-  if (activeSub && !activeSub.stripe_subscription_id && params.user.email) {
-    const remote = await findActiveStripeSubscriptionForOrganisation({
-      organisationId: params.context.organisationId,
-      email: params.user.email,
-    });
+  const remote = await findActiveStripeSubscriptionForOrganisation({
+    organisationId: params.context.organisationId,
+    email: params.user.email,
+  });
 
-    if (remote) {
+  if (remote) {
+    if (activeSub && !activeSub.stripe_subscription_id) {
       activeSub = await linkStripeSubscriptionToRow(
         params.billingDb,
         activeSub as BillingSubscriptionRow,
         remote.id,
         remote.status
       );
+    } else if (!activeSub) {
+      activeSub = await recoverBillingRowFromStripe(params.billingDb, {
+        user: params.user,
+        context: params.context,
+        remote,
+      });
     }
   }
 
-  if (activeSub?.stripe_subscription_id) {
-    const updateResult = await updateActiveStripeSubscription(params.billingDb, {
-      subscription: activeSub as BillingSubscriptionRow,
-      newTotal: params.newTotal,
-      ownerEmail: params.ownerEmail,
-    });
-
-    if (updateResult.error) {
-      return { ok: false, status: 502, error: updateResult.error };
-    }
-
+  if (!activeSub?.stripe_subscription_id) {
     return {
-      ok: true,
-      mode: "subscription_updated",
-      currentLicenses: currentTotal,
-      newTotal: params.newTotal,
+      ok: false,
+      status: 409,
+      error:
+        "We could not find your active Stripe subscription. Email hello@clarivo-tech.com so we can link your billing before adding seats.",
     };
   }
 
-  if (!activeSub && params.user.email) {
-    const remote = await findActiveStripeSubscriptionForOrganisation({
-      organisationId: params.context.organisationId,
-      email: params.user.email,
-    });
+  const updateResult = await updateActiveStripeSubscription(params.billingDb, {
+    subscription: activeSub as BillingSubscriptionRow,
+    newTotal: params.newTotal,
+    ownerEmail: params.ownerEmail,
+  });
 
-    if (remote) {
-      const priceId = getStripePriceId();
-      const now = new Date().toISOString();
-      const { data: inserted, error: insertError } = await params.billingDb
-        .from("billing_subscriptions")
-        .insert({
-          organisation_id: params.context.organisationId,
-          user_id: params.user.id,
-          merchant_reference: `clarivo-sub-recover-${params.context.organisationId}-${crypto.randomUUID()}`,
-          stripe_price_id: priceId,
-          stripe_subscription_id: remote.id,
-          stripe_status: remote.status,
-          licenses: subscriptionQuantity(remote),
-          amount_pence: licensesToAmountPence(subscriptionQuantity(remote)),
-          currency: "GBP",
-          status: "active",
-          activated_at: now,
-          updated_at: now,
-        })
-        .select("*")
-        .single();
-
-      if (!insertError && inserted) {
-        activeSub = inserted;
-        const updateResult = await updateActiveStripeSubscription(params.billingDb, {
-          subscription: inserted as BillingSubscriptionRow,
-          newTotal: params.newTotal,
-          ownerEmail: params.ownerEmail,
-        });
-
-        if (updateResult.error) {
-          return { ok: false, status: 502, error: updateResult.error };
-        }
-
-        return {
-          ok: true,
-          mode: "subscription_updated",
-          currentLicenses: currentTotal,
-          newTotal: params.newTotal,
-        };
-      }
-    }
+  if (updateResult.error) {
+    return { ok: false, status: 502, error: updateResult.error };
   }
 
-  return startNewSubscriptionCheckout({
-    ...params,
-    isAddLicenses: true,
-  });
+  return {
+    ok: true,
+    mode: "subscription_updated",
+    currentLicenses: currentTotal,
+    newTotal: params.newTotal,
+    additionalLicenses,
+  };
 }

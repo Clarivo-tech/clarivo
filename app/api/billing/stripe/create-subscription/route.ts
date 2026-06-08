@@ -69,7 +69,6 @@ export async function POST(request: Request) {
 
   if (existingActive) {
     const addResult = await updateSubscriptionLicenses({
-      request,
       billingDb,
       user: auth.user,
       context,
@@ -79,18 +78,8 @@ export async function POST(request: Request) {
     if (!addResult.ok) {
       return NextResponse.json({ error: addResult.error }, { status: addResult.status });
     }
-    if (addResult.mode === "subscription_updated") {
-      return NextResponse.json({
-        mode: "subscription_updated",
-        currentLicenses: addResult.currentLicenses,
-        newTotal: addResult.newTotal,
-      });
-    }
     return NextResponse.json({
-      mode: "checkout",
-      checkoutUrl: addResult.checkoutUrl,
-      sessionId: addResult.sessionId,
-      merchantReference: addResult.merchantReference,
+      mode: "subscription_updated",
       currentLicenses: addResult.currentLicenses,
       newTotal: addResult.newTotal,
       additionalLicenses: addResult.additionalLicenses,

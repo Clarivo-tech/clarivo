@@ -107,35 +107,46 @@ export async function findActiveStripeSubscriptionForOrganisation(params: {
   const stripe = getStripe();
   const customers = await stripe.customers.list({
     email: params.email,
-    limit: 10,
+    limit: 100,
   });
 
-  const customer =
-    customers.data.find(
-      (row) => row.metadata?.clarivo_organisation_id === params.organisationId
-    ) ?? customers.data[0];
-
-  if (!customer) {
+  if (customers.data.length === 0) {
     return null;
   }
 
-  for (const status of ["active", "trialing"] as const) {
+  const activeStatuses = new Set(["active", "trialing"]);
+  let fallback: Stripe.Subscription | null = null;
+
+  for (const customer of customers.data) {
     const subs = await stripe.subscriptions.list({
       customer: customer.id,
-      status,
-      limit: 5,
+      status: "all",
+      limit: 20,
     });
-    const match = subs.data.find(
-      (sub) =>
-        sub.metadata?.clarivo_organisation_id === params.organisationId ||
-        sub.metadata?.clarivo_organisation_id === undefined
-    );
-    if (match) {
-      return match;
+
+    for (const sub of subs.data) {
+      if (!activeStatuses.has(sub.status)) {
+        continue;
+      }
+
+      if (sub.metadata?.clarivo_organisation_id === params.organisationId) {
+        return sub;
+      }
+
+      if (
+        customer.metadata?.clarivo_organisation_id === params.organisationId &&
+        !fallback
+      ) {
+        fallback = sub;
+      }
+
+      if (!fallback) {
+        fallback = sub;
+      }
     }
   }
 
-  return null;
+  return fallback;
 }
 
 export async function createSubscriptionCheckoutSession(params: {

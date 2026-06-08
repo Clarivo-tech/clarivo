@@ -35,10 +35,9 @@ export function UpgradePageClient({
   const isAddFromUrl = searchParams.get("add") === "1";
   const isAddMode = addLicensesMode || isAddFromUrl;
   const isPaymentReturn = searchParams.get("payment") === "success";
-  const minLicenses = isAddMode ? currentLicenses + 1 : 1;
-  const [licenses, setLicenses] = useState(
-    isAddMode ? currentLicenses + 1 : Math.max(1, currentLicenses)
-  );
+  const maxAdditional = Math.max(1, 100 - currentLicenses);
+  const [licenseCount, setLicenseCount] = useState(Math.max(1, currentLicenses));
+  const [additionalToAdd, setAdditionalToAdd] = useState(1);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -51,20 +50,18 @@ export function UpgradePageClient({
     setIsLocalDev(host === "localhost" || host === "127.0.0.1");
   }, []);
 
-  const additionalLicenses = isAddMode
-    ? Math.max(0, licenses - currentLicenses)
-    : licenses;
-  const additionalMonthlyTotal = additionalLicenses * pricePerLicenseGbp;
-  const monthlyTotal = licenses * pricePerLicenseGbp;
   const priceLabel = pricePerLicenseGbp.toLocaleString("en-GB", {
     style: "currency",
     currency: "GBP",
   });
-  const totalLabel = monthlyTotal.toLocaleString("en-GB", {
+  const additionalMonthlyTotal = additionalToAdd * pricePerLicenseGbp;
+  const additionalLabel = additionalMonthlyTotal.toLocaleString("en-GB", {
     style: "currency",
     currency: "GBP",
   });
-  const additionalLabel = additionalMonthlyTotal.toLocaleString("en-GB", {
+  const newLicenseTotal = currentLicenses + additionalToAdd;
+  const upgradeMonthlyTotal = licenseCount * pricePerLicenseGbp;
+  const upgradeTotalLabel = upgradeMonthlyTotal.toLocaleString("en-GB", {
     style: "currency",
     currency: "GBP",
   });
@@ -116,7 +113,7 @@ export function UpgradePageClient({
     return () => {
       cancelled = true;
     };
-  }, [paymentSuccess, isOwner, isPaymentReturn, licenses, router]);
+  }, [paymentSuccess, isOwner, isPaymentReturn, router]);
 
   async function handleCheckout() {
     setError(null);
@@ -131,7 +128,11 @@ export function UpgradePageClient({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ licenses }),
+        body: JSON.stringify(
+          isAddMode
+            ? { additionalLicenses: additionalToAdd }
+            : { licenses: licenseCount }
+        ),
         credentials: "same-origin",
       });
 
@@ -140,6 +141,7 @@ export function UpgradePageClient({
         error?: string;
         mode?: string;
         newTotal?: number;
+        additionalLicenses?: number;
       } = {};
       const text = await res.text();
       if (text) {
@@ -157,6 +159,11 @@ export function UpgradePageClient({
       }
 
       if (payload.mode === "subscription_updated") {
+        setSuccessMessage(
+          payload.newTotal
+            ? `Added ${payload.additionalLicenses ?? additionalToAdd} license${(payload.additionalLicenses ?? additionalToAdd) === 1 ? "" : "s"}. You now have ${payload.newTotal} in total. Stripe will charge a prorated amount for the extra seat on your existing subscription.`
+            : "Licenses updated on your subscription."
+        );
         router.push("/dashboard/team?billing=success");
         return;
       }
@@ -206,9 +213,9 @@ export function UpgradePageClient({
         <CardDescription>
           {isAddMode ? (
             <>
-              You currently have <strong>{currentLicenses}</strong> license
-              {currentLicenses === 1 ? "" : "s"} for {organisationName}. Choose
-              your new total to invite more teammates.
+              You have <strong>{currentLicenses}</strong> license
+              {currentLicenses === 1 ? "" : "s"} on {organisationName}. Choose how
+              many more teammates you want to invite.
             </>
           ) : (
             <>
@@ -253,80 +260,108 @@ export function UpgradePageClient({
         ) : null}
 
         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5">
-          <label htmlFor="licenses" className="text-sm font-medium text-zinc-900">
-            {isAddMode ? "New license total" : "Number of licenses"}
-          </label>
-          <div className="mt-2 flex items-center gap-3">
-            <Input
-              id="licenses"
-              type="number"
-              min={minLicenses}
-              max={100}
-              value={licenses}
-              onChange={(e) =>
-                setLicenses(
-                  Math.max(
-                    minLicenses,
-                    Math.min(100, Number(e.target.value) || minLicenses)
-                  )
-                )
-              }
-              className="h-11 max-w-[120px]"
-              disabled={loading || syncing}
-            />
-            <span className="text-sm text-zinc-600">
-              × {priceLabel}/month per license
-            </span>
-          </div>
           {isAddMode ? (
-            <p className="mt-4 text-lg font-semibold text-zinc-900">
-              +{additionalLabel}
-              <span className="text-base font-normal text-zinc-500">
-                {" "}
-                /month for {additionalLicenses} additional license
-                {additionalLicenses === 1 ? "" : "s"}
-              </span>
-            </p>
-          ) : null}
-          <p className={`${isAddMode ? "mt-2" : "mt-4"} text-2xl font-bold text-zinc-900`}>
-            {totalLabel}
-            <span className="text-base font-normal text-zinc-500">
-              {isAddMode ? " /month (new total)" : " /month"}
-            </span>
-          </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            {isAddMode ? (
-              <>
-                Adding {additionalLicenses} license
-                {additionalLicenses === 1 ? "" : "s"} ({currentLicenses} → {licenses}).
-                We update your existing Stripe subscription when possible — you pay a
-                prorated amount for the extra seat, not a second full subscription.
-              </>
-            ) : (
-              <>
+            <>
+              <label
+                htmlFor="additional-licenses"
+                className="text-sm font-medium text-zinc-900"
+              >
+                Additional licenses
+              </label>
+              <div className="mt-2 flex items-center gap-3">
+                <Input
+                  id="additional-licenses"
+                  type="number"
+                  min={1}
+                  max={maxAdditional}
+                  value={additionalToAdd}
+                  onChange={(e) =>
+                    setAdditionalToAdd(
+                      Math.max(
+                        1,
+                        Math.min(
+                          maxAdditional,
+                          Number(e.target.value) || 1
+                        )
+                      )
+                    )
+                  }
+                  className="h-11 max-w-[120px]"
+                  disabled={loading || syncing}
+                />
+                <span className="text-sm text-zinc-600">
+                  × {priceLabel}/month each
+                </span>
+              </div>
+              <p className="mt-4 text-2xl font-bold text-zinc-900">
+                {additionalLabel}
+                <span className="text-base font-normal text-zinc-500">
+                  {" "}
+                  /month added
+                </span>
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                Stripe adds {additionalToAdd} seat
+                {additionalToAdd === 1 ? "" : "s"} to your existing subscription.
+                You pay a prorated amount for the extra seat(s) only — not a second
+                full subscription. After this change you&apos;ll have{" "}
+                {newLicenseTotal} license{newLicenseTotal === 1 ? "" : "s"} in total.
+              </p>
+            </>
+          ) : (
+            <>
+              <label htmlFor="licenses" className="text-sm font-medium text-zinc-900">
+                Number of licenses
+              </label>
+              <div className="mt-2 flex items-center gap-3">
+                <Input
+                  id="licenses"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={licenseCount}
+                  onChange={(e) =>
+                    setLicenseCount(
+                      Math.max(1, Math.min(100, Number(e.target.value) || 1))
+                    )
+                  }
+                  className="h-11 max-w-[120px]"
+                  disabled={loading || syncing}
+                />
+                <span className="text-sm text-zinc-600">
+                  × {priceLabel}/month per license
+                </span>
+              </div>
+              <p className="mt-4 text-2xl font-bold text-zinc-900">
+                {upgradeTotalLabel}
+                <span className="text-base font-normal text-zinc-500"> /month</span>
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
                 Billed monthly via Stripe. Includes you as the first license.
                 Unused licenses can be assigned when you invite colleagues on My Team.
-              </>
-            )}
-          </p>
+              </p>
+            </>
+          )}
         </div>
 
         {!isPaymentReturn ? (
           <button
             type="button"
-            disabled={loading || syncing || (isAddMode && licenses <= currentLicenses)}
+            disabled={loading || syncing}
             onClick={() => void handleCheckout()}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#F97316] px-4 text-sm font-medium text-white transition-colors hover:bg-[#111827] disabled:pointer-events-none disabled:opacity-50"
           >
             {loading ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Starting secure checkout…
+                {isAddMode ? "Updating subscription…" : "Starting secure checkout…"}
               </>
             ) : (
               <>
-                Continue to secure payment
-                <ExternalLink className="size-4" />
+                {isAddMode
+                  ? `Add ${additionalToAdd} license${additionalToAdd === 1 ? "" : "s"}`
+                  : "Continue to secure payment"}
+                {!isAddMode ? <ExternalLink className="size-4" /> : null}
               </>
             )}
           </button>
@@ -355,9 +390,9 @@ export function UpgradePageClient({
 
         <p className="text-center text-xs text-zinc-500">
           {isAddMode
-            ? "Extra seats are added to your Stripe subscription when possible. Otherwise you\u2019ll complete a one-time setup on Stripe\u2019s checkout page."
+            ? "No separate checkout page — seats are added to your existing Stripe subscription."
             : "You\u2019ll set up a monthly subscription on Stripe\u2019s secure checkout page."}
-          Questions?{" "}
+          {" "}Questions?{" "}
           <a
             href="mailto:hello@clarivo-tech.com"
             className="text-[#F97316] hover:underline"

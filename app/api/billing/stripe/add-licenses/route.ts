@@ -19,19 +19,11 @@ export async function POST(request: Request) {
 
   const billingDb = tryCreateAdminClient() ?? auth.supabase;
 
-  let body: { licenses?: number };
+  let body: { licenses?: number; additionalLicenses?: number };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const newTotal = Number(body.licenses);
-  if (!Number.isInteger(newTotal) || newTotal < 1 || newTotal > MAX_LICENSES) {
-    return NextResponse.json(
-      { error: `Choose between 1 and ${MAX_LICENSES} licenses.` },
-      { status: 400 }
-    );
   }
 
   const context = await getOrgContextForTeam(
@@ -42,6 +34,31 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Only the workspace owner can purchase licenses." },
       { status: 403 }
+    );
+  }
+
+  const currentTotal = Math.max(1, context.seatLimit);
+  let newTotal: number;
+
+  if (body.additionalLicenses != null) {
+    const additional = Number(body.additionalLicenses);
+    if (!Number.isInteger(additional) || additional < 1) {
+      return NextResponse.json(
+        { error: "Choose at least 1 additional license." },
+        { status: 400 }
+      );
+    }
+    newTotal = currentTotal + additional;
+  } else {
+    newTotal = Number(body.licenses);
+  }
+
+  if (!Number.isInteger(newTotal) || newTotal <= currentTotal || newTotal > MAX_LICENSES) {
+    return NextResponse.json(
+      {
+        error: `Choose between 1 and ${MAX_LICENSES - currentTotal} additional license${MAX_LICENSES - currentTotal === 1 ? "" : "s"}.`,
+      },
+      { status: 400 }
     );
   }
 
@@ -57,7 +74,6 @@ export async function POST(request: Request) {
   }
 
   const result = await updateSubscriptionLicenses({
-    request,
     billingDb,
     user: billingUser,
     context,
@@ -69,19 +85,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  if (result.mode === "subscription_updated") {
-    return NextResponse.json({
-      mode: "subscription_updated",
-      currentLicenses: result.currentLicenses,
-      newTotal: result.newTotal,
-    });
-  }
-
   return NextResponse.json({
-    mode: "checkout",
-    checkoutUrl: result.checkoutUrl,
-    sessionId: result.sessionId,
-    merchantReference: result.merchantReference,
+    mode: "subscription_updated",
     currentLicenses: result.currentLicenses,
     newTotal: result.newTotal,
     additionalLicenses: result.additionalLicenses,
