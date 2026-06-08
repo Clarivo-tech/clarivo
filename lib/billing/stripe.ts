@@ -6,7 +6,7 @@ let stripeClient: Stripe | null = null;
 
 export function isStripeConfigured(): boolean {
   return Boolean(
-    process.env.STRIPE_SECRET_KEY?.trim() && getStripePriceId()
+    process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_PRICE_ID?.trim()
   );
 }
 
@@ -100,6 +100,44 @@ export async function findOrCreateStripeCustomer(params: {
   });
 }
 
+export async function findActiveStripeSubscriptionForOrganisation(params: {
+  organisationId: string;
+  email: string;
+}): Promise<Stripe.Subscription | null> {
+  const stripe = getStripe();
+  const customers = await stripe.customers.list({
+    email: params.email,
+    limit: 10,
+  });
+
+  const customer =
+    customers.data.find(
+      (row) => row.metadata?.clarivo_organisation_id === params.organisationId
+    ) ?? customers.data[0];
+
+  if (!customer) {
+    return null;
+  }
+
+  for (const status of ["active", "trialing"] as const) {
+    const subs = await stripe.subscriptions.list({
+      customer: customer.id,
+      status,
+      limit: 5,
+    });
+    const match = subs.data.find(
+      (sub) =>
+        sub.metadata?.clarivo_organisation_id === params.organisationId ||
+        sub.metadata?.clarivo_organisation_id === undefined
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
 export async function createSubscriptionCheckoutSession(params: {
   request: Request;
   customerId: string;
@@ -107,16 +145,21 @@ export async function createSubscriptionCheckoutSession(params: {
   merchantReference: string;
   organisationId: string;
   userId: string;
+  addLicensesMode?: boolean;
+  currentLicenses?: number;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const priceId = getStripePriceId();
   const appBase = getStripeRedirectBaseUrl(params.request);
   const successUrl = `${appBase}/dashboard/team?billing=success&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${appBase}/dashboard/upgrade`;
+  const cancelUrl = params.addLicensesMode
+    ? `${appBase}/dashboard/upgrade?add=1`
+    : `${appBase}/dashboard/upgrade`;
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
     customer: params.customerId,
+    locale: "en-GB",
     line_items: [
       {
         price: priceId,
@@ -131,6 +174,8 @@ export async function createSubscriptionCheckoutSession(params: {
       clarivo_organisation_id: params.organisationId,
       clarivo_user_id: params.userId,
       clarivo_licenses: String(params.licenses),
+      clarivo_mode: params.addLicensesMode ? "add_licenses" : "new_subscription",
+      clarivo_current_licenses: String(params.currentLicenses ?? 0),
     },
     subscription_data: {
       metadata: {

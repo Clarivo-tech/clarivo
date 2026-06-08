@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink, Loader2, Users } from "lucide-react";
-import { PRICE_PER_LICENSE_GBP } from "@/lib/billing/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,12 +18,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export function UpgradePageClient({
   organisationName,
   currentLicenses,
+  pricePerLicenseGbp,
   isOwner,
   paymentSuccess,
   addLicensesMode = false,
 }: {
   organisationName: string;
   currentLicenses: number;
+  pricePerLicenseGbp: number;
   isOwner: boolean;
   paymentSuccess?: boolean;
   addLicensesMode?: boolean;
@@ -53,12 +54,17 @@ export function UpgradePageClient({
   const additionalLicenses = isAddMode
     ? Math.max(0, licenses - currentLicenses)
     : licenses;
-  const monthlyTotal = licenses * PRICE_PER_LICENSE_GBP;
-  const priceLabel = PRICE_PER_LICENSE_GBP.toLocaleString("en-GB", {
+  const additionalMonthlyTotal = additionalLicenses * pricePerLicenseGbp;
+  const monthlyTotal = licenses * pricePerLicenseGbp;
+  const priceLabel = pricePerLicenseGbp.toLocaleString("en-GB", {
     style: "currency",
     currency: "GBP",
   });
   const totalLabel = monthlyTotal.toLocaleString("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  });
+  const additionalLabel = additionalMonthlyTotal.toLocaleString("en-GB", {
     style: "currency",
     currency: "GBP",
   });
@@ -269,10 +275,20 @@ export function UpgradePageClient({
               disabled={loading || syncing}
             />
             <span className="text-sm text-zinc-600">
-              × £{PRICE_PER_LICENSE_GBP}/month per license
+              × {priceLabel}/month per license
             </span>
           </div>
-          <p className="mt-4 text-2xl font-bold text-zinc-900">
+          {isAddMode ? (
+            <p className="mt-4 text-lg font-semibold text-zinc-900">
+              +{additionalLabel}
+              <span className="text-base font-normal text-zinc-500">
+                {" "}
+                /month for {additionalLicenses} additional license
+                {additionalLicenses === 1 ? "" : "s"}
+              </span>
+            </p>
+          ) : null}
+          <p className={`${isAddMode ? "mt-2" : "mt-4"} text-2xl font-bold text-zinc-900`}>
             {totalLabel}
             <span className="text-base font-normal text-zinc-500">
               {isAddMode ? " /month (new total)" : " /month"}
@@ -283,8 +299,8 @@ export function UpgradePageClient({
               <>
                 Adding {additionalLicenses} license
                 {additionalLicenses === 1 ? "" : "s"} ({currentLicenses} → {licenses}).
-                Your Stripe monthly subscription updates to this seat count — future
-                invoices reflect the new total.
+                We update your existing Stripe subscription when possible — you pay a
+                prorated amount for the extra seat, not a second full subscription.
               </>
             ) : (
               <>
@@ -339,7 +355,7 @@ export function UpgradePageClient({
 
         <p className="text-center text-xs text-zinc-500">
           {isAddMode
-            ? "You\u2019ll pay for the additional licenses on Stripe\u2019s secure checkout page, then your seat count updates on My Team."
+            ? "Extra seats are added to your Stripe subscription when possible. Otherwise you\u2019ll complete a one-time setup on Stripe\u2019s checkout page."
             : "You\u2019ll set up a monthly subscription on Stripe\u2019s secure checkout page."}
           Questions?{" "}
           <a

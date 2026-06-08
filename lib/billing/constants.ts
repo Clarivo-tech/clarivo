@@ -9,7 +9,7 @@ export const PRICE_PER_LICENSE_GBP_PRODUCTION = 99.99;
 
 const TEST_PRICE_PER_LICENSE_GBP = 0.5;
 
-function resolvePricePerLicenseGbp(): number {
+export function getPricePerLicenseGbp(): number {
   const raw = process.env.PRICE_PER_LICENSE_GBP?.trim();
   if (raw) {
     const value = Number(raw);
@@ -20,11 +20,15 @@ function resolvePricePerLicenseGbp(): number {
   return TEST_PRICE_PER_LICENSE_GBP;
 }
 
-export const PRICE_PER_LICENSE_GBP = resolvePricePerLicenseGbp();
+/** @deprecated Prefer getPricePerLicenseGbp() — this is fixed at module load (build time in client bundles). */
+export const PRICE_PER_LICENSE_GBP = getPricePerLicenseGbp();
 
 export const MIN_LICENSES = 1;
 export const MAX_LICENSES = 100;
 
-export function licensesToAmountPence(licenses: number): number {
-  return Math.round(licenses * PRICE_PER_LICENSE_GBP * 100);
+export function licensesToAmountPence(
+  licenses: number,
+  pricePerLicense = getPricePerLicenseGbp()
+): number {
+  return Math.round(licenses * pricePerLicense * 100);
 }

@@ -4,6 +4,7 @@ import { bypassesTrialRestrictions } from "@/lib/admin/access";
 import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
+import { getPricePerLicenseGbp } from "@/lib/billing/constants";
 import { syncLatestPendingPaymentForUser } from "@/lib/billing/sync-pending-payment";
 import { UpgradePageClient } from "@/components/dashboard/upgrade-page-client";
 
@@ -89,6 +90,7 @@ export default async function UpgradePage({
         <UpgradePageClient
           organisationName={context?.organisationName ?? "your workspace"}
           currentLicenses={context?.seatLimit ?? 1}
+          pricePerLicenseGbp={getPricePerLicenseGbp()}
           isOwner={context?.role === "owner"}
           paymentSuccess={payment === "success"}
           addLicensesMode={addLicensesMode}
