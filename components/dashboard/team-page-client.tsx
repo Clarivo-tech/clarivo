@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ADD_LICENSES_PAGE_PATH } from "@/lib/billing/payment-link";
+import {
+  ADD_LICENSES_PAGE_PATH,
+  UPGRADE_PAGE_PATH,
+} from "@/lib/billing/payment-link";
 import { Loader2, Mail, Ticket, UserPlus, Users } from "lucide-react";
 import {
   cancelInvite,
@@ -154,7 +157,7 @@ function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
       {isOwner && (
         <CardContent>
           <Button
-            render={<Link href={ADD_LICENSES_PAGE_PATH} />}
+            render={<Link href={UPGRADE_PAGE_PATH} />}
             className="bg-[#F97316] text-white hover:bg-[#111827]"
           >
             Choose licenses & upgrade

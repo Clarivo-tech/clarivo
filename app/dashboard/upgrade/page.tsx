@@ -6,9 +6,46 @@ import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { getPricePerLicenseGbp } from "@/lib/billing/constants";
 import { syncLatestPendingPaymentForUser } from "@/lib/billing/sync-pending-payment";
+import { findActiveStripeSubscriptionForOrganisation } from "@/lib/billing/stripe";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { UpgradePageClient } from "@/components/dashboard/upgrade-page-client";
 
 export const dynamic = "force-dynamic";
+
+async function hasActiveStripeSubscription(
+  organisationId: string,
+  ownerEmail: string | null | undefined,
+  supabase: Awaited<
+    ReturnType<typeof getDashboardSession>
+  >["dataSupabase"]
+): Promise<boolean> {
+  const db = tryCreateAdminClient() ?? supabase;
+  const { data } = await db
+    .from("billing_subscriptions")
+    .select("stripe_subscription_id, status")
+    .eq("organisation_id", organisationId)
+    .eq("status", "active")
+    .not("stripe_subscription_id", "is", null)
+    .maybeSingle();
+
+  if (data?.stripe_subscription_id) {
+    return true;
+  }
+
+  if (!ownerEmail || !process.env.STRIPE_SECRET_KEY?.trim()) {
+    return false;
+  }
+
+  try {
+    const remote = await findActiveStripeSubscriptionForOrganisation({
+      organisationId,
+      email: ownerEmail,
+    });
+    return Boolean(remote);
+  } catch {
+    return false;
+  }
+}
 
 function isFullySubscribed(
   subscriptionStatus: string | null | undefined,
@@ -64,16 +101,33 @@ export default async function UpgradePage({
     context = await getOrgContextForTeam(dataSupabase, effectiveUserId);
   }
 
-  if (isFullySubscribed(preferences.subscription_status, context)) {
+  const subscribed = isFullySubscribed(
+    preferences.subscription_status,
+    context
+  );
+  const hasStripe = context
+    ? await hasActiveStripeSubscription(
+        context.organisationId,
+        user.email,
+        dataSupabase
+      )
+    : false;
+
+  if (subscribed) {
     if (addLicensesMode) {
       if (context?.role !== "owner") {
         redirect("/dashboard/team");
       }
-    } else if (context?.role === "owner") {
+      if (!hasStripe) {
+        redirect("/dashboard/upgrade");
+      }
+    } else if (context?.role === "owner" && hasStripe) {
       redirect("/dashboard/upgrade?add=1");
-    } else {
+    } else if (context?.role !== "owner") {
       redirect("/dashboard");
     }
+  } else if (addLicensesMode) {
+    redirect("/dashboard/upgrade");
   }
 
   if (addLicensesMode && context?.role !== "owner") {
