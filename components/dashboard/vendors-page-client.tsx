@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +9,6 @@ import {
   Grid3X3,
   LayoutList,
   Plus,
-  PoundSterling,
   Star,
   Trash2,
   Users,
@@ -19,7 +18,9 @@ import { VendorFormSheet } from "@/components/dashboard/vendor-form-sheet";
 import { PerformanceScoreBadge } from "@/components/performance/performance-score-badge";
 import { VendorRiskBadge } from "@/components/dashboard/vendor-risk-badge";
 import { VendorStatusBadge } from "@/components/dashboard/vendor-status-badge";
+import { ExpandableVendorStatCard } from "@/components/dashboard/expandable-vendor-stat-card";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { VendorSpendStatCard } from "@/components/dashboard/vendor-spend-stat-card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -54,6 +55,18 @@ export function VendorsPageClient({
   const [view, setView] = useState<"grid" | "table">("grid");
   const [formOpen, setFormOpen] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
+
+  const criticalVendors = useMemo(
+    () => rows.filter((v) => v.is_critical),
+    [rows]
+  );
+  const highRiskVendors = useMemo(
+    () =>
+      rows.filter(
+        (v) => v.risk_rating === "high" || v.risk_rating === "critical"
+      ),
+    [rows]
+  );
 
   function openCreate() {
     setEditVendor(null);
@@ -109,26 +122,28 @@ export function VendorsPageClient({
           iconColor="#F97316"
           iconBgClassName="bg-[#F97316]/15"
         />
-        <StatCard
+        <ExpandableVendorStatCard
           title="Critical Vendors"
-          value={String(stats.criticalVendors)}
+          count={stats.criticalVendors}
+          vendors={criticalVendors}
           icon={Star}
           iconColor="#111827"
           iconBgClassName="bg-orange-100"
+          accentClassName="hover:text-[#F97316] focus-visible:ring-[#F97316]/40"
         />
-        <StatCard
+        <ExpandableVendorStatCard
           title="High Risk Vendors"
-          value={String(stats.highRiskVendors)}
+          count={stats.highRiskVendors}
+          vendors={highRiskVendors}
           icon={AlertTriangle}
           iconColor="#DC2626"
           iconBgClassName="bg-red-100"
+          accentClassName="hover:text-[#DC2626] focus-visible:ring-[#DC2626]/40"
         />
-        <StatCard
-          title="Total Vendor Spend"
-          value={formatSpend(stats.totalVendorSpend, baseCurrency)}
-          icon={PoundSterling}
-          iconColor="#38BDF8"
-          iconBgClassName="bg-[#38BDF8]/15"
+        <VendorSpendStatCard
+          totalSpend={stats.totalVendorSpend}
+          annualSpend={stats.totalAnnualSpend}
+          baseCurrency={baseCurrency}
         />
       </div>
 

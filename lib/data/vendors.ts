@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getAnnualContractValue } from "@/lib/contracts/annual-contract-value";
 import { dedupeContractDataByContractId } from "@/lib/data/dedupe-contract-data";
 import { getContractData, getContracts } from "@/lib/data/contracts";
 import { getOrganisationId } from "@/lib/team/org";
@@ -66,14 +67,20 @@ export function buildVendorListRows(
   return vendors.map((vendor) => {
     const linked = contracts.filter((c) => c.vendor_id === vendor.id);
     let totalSpend = 0;
+    let annualSpend = 0;
     for (const c of linked) {
       const row = dataByContract.get(c.id);
-      totalSpend += Number(row?.contract_value) || 0;
+      const value = Number(row?.contract_value) || 0;
+      totalSpend += value;
+      if (row && value) {
+        annualSpend += getAnnualContractValue(value, row);
+      }
     }
     return {
       ...vendor,
       contractCount: linked.length,
       totalSpend,
+      annualSpend,
     };
   });
 }
@@ -86,6 +93,7 @@ export function computeVendorStats(rows: VendorListRow[]): VendorStats {
       (v) => v.risk_rating === "high" || v.risk_rating === "critical"
     ).length,
     totalVendorSpend: rows.reduce((sum, v) => sum + v.totalSpend, 0),
+    totalAnnualSpend: rows.reduce((sum, v) => sum + v.annualSpend, 0),
   };
 }
 

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 export const VALUE_VIEW_MODES = ["total", "annual"] as const;
 export type ValueViewMode = (typeof VALUE_VIEW_MODES)[number];
 
-const VALUE_VIEW_MODE_STORAGE_KEY = "clarivo-value-view-mode";
+export const VALUE_VIEW_MODE_STORAGE_KEY = "clarivo-value-view-mode";
 
 const VALUE_VIEW_LABELS: Record<ValueViewMode, string> = {
   total: "Total Value",

@@ -67,6 +67,7 @@ export type VendorActivity = {
 export type VendorListRow = Vendor & {
   contractCount: number;
   totalSpend: number;
+  annualSpend: number;
 };
 
 export type VendorFormInput = {
@@ -97,4 +98,5 @@ export type VendorStats = {
   criticalVendors: number;
   highRiskVendors: number;
   totalVendorSpend: number;
+  totalAnnualSpend: number;
 };
