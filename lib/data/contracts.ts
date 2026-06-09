@@ -110,13 +110,17 @@ export function computeDashboardStats(
   };
 }
 
+export const RENEWAL_ALERT_DAY_OPTIONS = [30, 60, 90, 120] as const;
+export type RenewalAlertDays = (typeof RENEWAL_ALERT_DAY_OPTIONS)[number];
+
 export function getRenewalAlerts(
-  contractData: ContractData[]
+  contractData: ContractData[],
+  days: RenewalAlertDays = 30
 ): ContractData[] {
   return contractData
     .filter(
       (row) =>
-        isRenewalWithinDays(row.renewal_date, 30) &&
+        isRenewalWithinDays(row.renewal_date, days) &&
         !row.renewal_alert_dismissed
     )
     .sort((a, b) => {

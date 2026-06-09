@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, CalendarClock } from "lucide-react";
 import { isMissingContractValue } from "@/lib/currency/currencies";
 import { dedupeContractDataByContractId } from "@/lib/contracts/dedupe-contract-data";
-import { getRenewalAlerts } from "@/lib/data/contracts";
+import {
+  getRenewalAlerts,
+  RENEWAL_ALERT_DAY_OPTIONS,
+  type RenewalAlertDays,
+} from "@/lib/data/contracts";
 import { formatDate } from "@/lib/format";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { useDashboardData } from "@/components/dashboard/dashboard-data-provider";
@@ -14,18 +18,37 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { dismissRenewalAlert } from "@/app/dashboard/actions";
 
+const RENEWAL_ALERT_DAYS_STORAGE_KEY = "clarivo-renewal-alert-days";
+
+function isRenewalAlertDays(value: number): value is RenewalAlertDays {
+  return (RENEWAL_ALERT_DAY_OPTIONS as readonly number[]).includes(value);
+}
+
 export function DashboardOverview() {
   const { contractData, updateContractRow } = useDashboardData();
   const { formatContractValue } = useCurrency();
   const [isDismissPending, startDismissTransition] = useTransition();
   const [dismissPendingId, setDismissPendingId] = useState<string | null>(null);
+  const [alertDays, setAlertDays] = useState<RenewalAlertDays>(30);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(RENEWAL_ALERT_DAYS_STORAGE_KEY);
+    if (!stored) return;
+    const parsed = Number(stored);
+    if (isRenewalAlertDays(parsed)) {
+      setAlertDays(parsed);
+    }
+  }, []);
 
   const rows = useMemo(
     () => dedupeContractDataByContractId(contractData),
     [contractData]
   );
 
-  const alerts = useMemo(() => getRenewalAlerts(contractData), [contractData]);
+  const alerts = useMemo(
+    () => getRenewalAlerts(contractData, alertDays),
+    [contractData, alertDays]
+  );
 
   return (
     <div className="grid gap-8 lg:grid-cols-3">
@@ -34,22 +57,46 @@ export function DashboardOverview() {
       <div className="flex flex-col gap-8">
         <section className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
           <div className="border-b border-zinc-100 px-6 py-5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-4 text-[#F97316]" />
-              <h2 className="text-base font-semibold text-zinc-900">
-                Renewal alerts
-              </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="size-4 text-[#F97316]" />
+                  <h2 className="text-base font-semibold text-zinc-900">
+                    Renewal alerts
+                  </h2>
+                </div>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Contracts renewing within the next {alertDays} days.
+                </p>
+              </div>
+              <select
+                aria-label="Renewal alert window"
+                value={alertDays}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (!isRenewalAlertDays(next)) return;
+                  setAlertDays(next);
+                  localStorage.setItem(
+                    RENEWAL_ALERT_DAYS_STORAGE_KEY,
+                    String(next)
+                  );
+                }}
+                className="h-8 shrink-0 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 outline-none focus-visible:border-[#F97316] focus-visible:ring-3 focus-visible:ring-[#F97316]/30"
+              >
+                {RENEWAL_ALERT_DAY_OPTIONS.map((days) => (
+                  <option key={days} value={days}>
+                    {days} days
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className="mt-1 text-sm text-zinc-500">
-              Contracts renewing within the next 30 days.
-            </p>
           </div>
           <div className="p-6">
             {alerts.length === 0 ? (
               <EmptyState
                 icon={CalendarClock}
                 title="No upcoming renewals"
-                description="You're all set — no contracts are due to renew in the next 30 days."
+                description={`You're all set — no contracts are due to renew in the next ${alertDays} days.`}
                 className="py-8"
               />
             ) : (
