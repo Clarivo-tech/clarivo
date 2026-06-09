@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FileStack, Upload } from "lucide-react";
+import {
+  formatContractLength,
+  getAnnualContractValue,
+  getContractTermYears,
+} from "@/lib/contracts/annual-contract-value";
 import { isMissingContractValue } from "@/lib/currency/currencies";
 import type { ContractData } from "@/lib/types/contracts";
 import { formatDate } from "@/lib/format";
@@ -98,7 +103,13 @@ export function DashboardContractsSection() {
                         Vendor
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        Value
+                        Total Value
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Annual Value
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Contract Length
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Start
@@ -129,6 +140,18 @@ export function DashboardContractsSection() {
                         row.contract_value,
                         row.currency
                       );
+                      const canAnnualize =
+                        !missingValue && getContractTermYears(row) != null;
+                      const annualValue = canAnnualize
+                        ? formatContractValue(
+                            getAnnualContractValue(
+                              Number(row.contract_value) || 0,
+                              row
+                            ),
+                            row.currency
+                          )
+                        : null;
+                      const contractLength = formatContractLength(row);
 
                       return (
                         <TableRow
@@ -190,6 +213,27 @@ export function DashboardContractsSection() {
                                 ) : null}
                               </>
                             )}
+                          </TableCell>
+                          <TableCell className="py-3.5 tabular-nums">
+                            {missingValue ? (
+                              <span className="text-zinc-400">—</span>
+                            ) : annualValue ? (
+                              <>
+                                <span className="text-zinc-700">
+                                  {annualValue.display}
+                                </span>
+                                {annualValue.originalNote ? (
+                                  <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+                                    {annualValue.originalNote}
+                                  </span>
+                                ) : null}
+                              </>
+                            ) : (
+                              <span className="text-zinc-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3.5 text-zinc-600">
+                            {contractLength ?? "—"}
                           </TableCell>
                           <TableCell className="py-3.5 text-zinc-600">
                             {formatDate(row.start_date)}
