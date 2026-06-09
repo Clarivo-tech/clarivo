@@ -103,6 +103,12 @@ export function DashboardContractsSection() {
                         Vendor
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Health
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Status
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Total Value
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -119,12 +125,6 @@ export function DashboardContractsSection() {
                       </TableHead>
                       <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Renewal
-                      </TableHead>
-                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        Health
-                      </TableHead>
-                      <TableHead className="h-10 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        Status
                       </TableHead>
                       <TableHead className="h-10 min-w-[140px] text-xs font-medium uppercase tracking-wide text-zinc-500">
                         Type
@@ -186,6 +186,15 @@ export function DashboardContractsSection() {
                             })()}
                           </TableCell>
                           <TableCell
+                            className="py-3.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <HealthScoreBadge row={row} />
+                          </TableCell>
+                          <TableCell className="py-3.5">
+                            <ContractStatusBadge status={row.status} />
+                          </TableCell>
+                          <TableCell
                             className="py-3.5 tabular-nums"
                             onClick={(e) => {
                               if (missingValue) {
@@ -243,15 +252,6 @@ export function DashboardContractsSection() {
                           </TableCell>
                           <TableCell className="py-3.5 text-zinc-600">
                             {formatDate(row.renewal_date)}
-                          </TableCell>
-                          <TableCell
-                            className="py-3.5"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <HealthScoreBadge row={row} />
-                          </TableCell>
-                          <TableCell className="py-3.5">
-                            <ContractStatusBadge status={row.status} />
                           </TableCell>
                           <TableCell
                             className="max-w-[220px] py-3.5 text-zinc-600"
