@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, DollarSign } from "lucide-react";
+import { getAnnualContractValue } from "@/lib/contracts/annual-contract-value";
 import { dedupeContractDataByContractId } from "@/lib/contracts/dedupe-contract-data";
 import {
   getHealthScoreForContract,
@@ -15,6 +16,16 @@ import type { ContractData } from "@/lib/types/contracts";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { useDashboardData } from "@/components/dashboard/dashboard-data-provider";
 import { cn } from "@/lib/utils";
+
+export const VALUE_VIEW_MODES = ["total", "annual"] as const;
+export type ValueViewMode = (typeof VALUE_VIEW_MODES)[number];
+
+const VALUE_VIEW_MODE_STORAGE_KEY = "clarivo-value-view-mode";
+
+const VALUE_VIEW_LABELS: Record<ValueViewMode, string> = {
+  total: "Total Value",
+  annual: "Annual Total",
+};
 
 type BreakdownRow = {
   id: string;
@@ -37,6 +48,7 @@ type CurrencyGroup = {
 
 function buildBreakdown(
   contractData: ContractData[],
+  viewMode: ValueViewMode,
   formatContractValue: ReturnType<typeof useCurrency>["formatContractValue"],
   formatInBase: ReturnType<typeof useCurrency>["formatInBase"],
   convert: ReturnType<typeof useCurrency>["convert"]
@@ -53,8 +65,13 @@ function buildBreakdown(
   const allRows: BreakdownRow[] = rows.map((row) => {
     const hasValue = !isMissingContractValue(row.contract_value);
     const sourceCurrency = normalizeCurrencyCode(row.currency);
+    const rawValue = Number(row.contract_value) || 0;
+    const amountForView =
+      hasValue && viewMode === "annual"
+        ? getAnnualContractValue(rawValue, row)
+        : rawValue;
     const formatted = hasValue
-      ? formatContractValue(row.contract_value, row.currency)
+      ? formatContractValue(amountForView, row.currency)
       : { display: "—" };
 
     let originalNote: string | undefined;
@@ -66,7 +83,7 @@ function buildBreakdown(
     }
 
     const convertedAmount = hasValue
-      ? convert(Number(row.contract_value) || 0, row.currency)
+      ? convert(amountForView, row.currency)
       : 0;
 
     return {
@@ -181,21 +198,34 @@ function BreakdownItem({
   );
 }
 
+function isValueViewMode(value: string): value is ValueViewMode {
+  return (VALUE_VIEW_MODES as readonly string[]).includes(value);
+}
+
 export function TotalValueStatCard() {
   const { contractData, openContractPanel } = useDashboardData();
   const { formatContractValue, formatInBase, convert, ratesUpdatedLabel } =
     useCurrency();
   const [expanded, setExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<ValueViewMode>("total");
+
+  useEffect(() => {
+    const stored = localStorage.getItem(VALUE_VIEW_MODE_STORAGE_KEY);
+    if (stored && isValueViewMode(stored)) {
+      setViewMode(stored);
+    }
+  }, []);
 
   const breakdown = useMemo(
     () =>
       buildBreakdown(
         contractData,
+        viewMode,
         formatContractValue,
         formatInBase,
         convert
       ),
-    [contractData, formatContractValue, formatInBase, convert]
+    [contractData, viewMode, formatContractValue, formatInBase, convert]
   );
 
   function toggleExpanded() {
@@ -211,8 +241,31 @@ export function TotalValueStatCard() {
     <div className="flex flex-col">
       <div className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)]">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[13px] font-medium text-zinc-500">Total Value</p>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-zinc-500">
+              {VALUE_VIEW_LABELS[viewMode]}
+            </p>
+            {viewMode === "annual" ? (
+              <p className="mt-0.5 text-xs text-zinc-400">
+                Estimated yearly spend from contract terms.
+              </p>
+            ) : null}
+          </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            <select
+              aria-label="Value view"
+              value={viewMode}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (!isValueViewMode(next)) return;
+                setViewMode(next);
+                localStorage.setItem(VALUE_VIEW_MODE_STORAGE_KEY, next);
+              }}
+              className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 outline-none focus-visible:border-[#34D399] focus-visible:ring-3 focus-visible:ring-[#34D399]/30"
+            >
+              <option value="total">Total value</option>
+              <option value="annual">Annual total</option>
+            </select>
             {breakdown.canExpand ? (
               <ChevronDown
                 className={cn(
@@ -299,7 +352,9 @@ export function TotalValueStatCard() {
           </ul>
 
           <div className="flex items-center justify-between border-t border-zinc-600 bg-zinc-800/80 px-4 py-3.5">
-            <span className="text-sm font-semibold text-white">Total</span>
+            <span className="text-sm font-semibold text-white">
+              {viewMode === "annual" ? "Annual total" : "Total"}
+            </span>
             <span className="text-base font-bold tabular-nums text-[#34D399]">
               {breakdown.totalDisplay}
             </span>
