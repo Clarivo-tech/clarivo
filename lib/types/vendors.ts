@@ -39,6 +39,13 @@ export type VendorDocumentType =
   | "soc2_report"
   | "nda"
   | "dpa"
+  | "msa"
+  | "sow"
+  | "invoice"
+  | "sla"
+  | "pricing_records"
+  | "onboarding_form"
+  | "gdpr_privacy_compliance"
   | "other";
 
 export type VendorDocument = {

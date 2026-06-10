@@ -55,7 +55,17 @@ export const VENDOR_DOCUMENT_TYPES: {
   { value: "iso_certification", label: "ISO Certification" },
   { value: "soc2_report", label: "SOC2 Report" },
   { value: "nda", label: "NDA" },
-  { value: "dpa", label: "DPA" },
+  { value: "dpa", label: "Data Processing Agreement (DPA)" },
+  { value: "msa", label: "Master Service Agreement (MSA)" },
+  { value: "sow", label: "Statement of Work (SOW)" },
+  { value: "invoice", label: "Invoices" },
+  { value: "sla", label: "Service Level Agreements (SLA)" },
+  { value: "pricing_records", label: "Pricing Records" },
+  { value: "onboarding_form", label: "Onboarding Form" },
+  {
+    value: "gdpr_privacy_compliance",
+    label: "GDPR/Privacy Compliance",
+  },
   { value: "other", label: "Other" },
 ];
 

@@ -3,18 +3,12 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api/auth";
 import { getVendorById } from "@/lib/data/vendors";
 import type { VendorDocumentType } from "@/lib/types/vendors";
+import { VENDOR_DOCUMENT_TYPES } from "@/lib/vendors/constants";
 
 const BUCKET = "vendors";
 const MAX_BYTES = 15 * 1024 * 1024;
 
-const ALLOWED_TYPES: VendorDocumentType[] = [
-  "insurance_certificate",
-  "iso_certification",
-  "soc2_report",
-  "nda",
-  "dpa",
-  "other",
-];
+const ALLOWED_TYPES = VENDOR_DOCUMENT_TYPES.map((t) => t.value);
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^\w.\-() ]/g, "_");
