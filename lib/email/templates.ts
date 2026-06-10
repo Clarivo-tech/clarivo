@@ -44,11 +44,13 @@ export function welcomeEmail(
     "#F97316",
     `
     <p style="margin:0 0 10px 0;font-size:16px;">Welcome to Clarivo, <strong>${firstName}</strong>!</p>
-    <p style="margin:0 0 20px 0;color:#444;">Your 5-day free trial is now active.</p>
+    <p style="margin:0 0 20px 0;color:#444;">Your 5-day free trial is now active. Here&apos;s how to get the most from it:</p>
     <div style="display:grid;gap:10px;">
-      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>1. Upload a contract</strong><br/><span style="color:#666;">Drop in your first PDF to start extraction.</span></div>
-      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>2. View your dashboard</strong><br/><span style="color:#666;">See spend, renewals, and risk in one place.</span></div>
-      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>3. Ask the AI</strong><br/><span style="color:#666;">Get instant answers from your contracts.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>1. Upload a contract</strong><br/><span style="color:#666;">Drop in your first PDF — extraction and analysis happen in one step.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>2. Explore your workspace</strong><br/><span style="color:#666;">Use the dashboard, vendors, analytics, and performance views to see spend and renewals.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>3. Check contract health</strong><br/><span style="color:#666;">Spot risks, gaps, and improvement suggestions before they become costly.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>4. Set alerts &amp; reminders</strong><br/><span style="color:#666;">Turn on renewal reminders and custom dates so key deadlines never slip.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>5. Ask the AI &amp; invite your team</strong><br/><span style="color:#666;">Chat with your contracts, add colleagues on My Team, and use Support if you need help.</span></div>
     </div>
     ${ctaButton("Go to your dashboard", dashboardUrl)}
   `
