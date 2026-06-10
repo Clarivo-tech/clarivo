@@ -147,8 +147,8 @@ const PLANS = [
 ];
 
 const STATS = [
-  { value: "£2.3M", label: "avg spend tracked" },
-  { value: "98%", label: "renewals caught" },
+  { value: "£5.4M", label: "avg spend tracked" },
+  { value: "100%", label: "renewals caught" },
   { value: "<20s", label: "extraction time" },
   { value: "4.9★", label: "customer rating" },
 ];
