@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { AiPortfolioInsights } from "@/components/analytics/ai-portfolio-insights";
 import { AnalyticsExportButton } from "@/components/analytics/analytics-export-button";
 import { AnalyticsStatsRow } from "@/components/analytics/analytics-stats-row";
@@ -14,6 +15,8 @@ export function AnalyticsPageClient({
 }: {
   contractData: ContractData[];
 }) {
+  const reportRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -25,21 +28,26 @@ export function AnalyticsPageClient({
             Deep insights across your contract portfolio.
           </p>
         </div>
-        <AnalyticsExportButton contractData={contractData} />
+        <AnalyticsExportButton
+          contractData={contractData}
+          reportRef={reportRef}
+        />
       </div>
 
-      <AnalyticsStatsRow contractData={contractData} />
+      <div ref={reportRef} className="flex flex-col gap-10 bg-white">
+        <AnalyticsStatsRow contractData={contractData} />
 
-      <ContractLifecycleTimeline contractData={contractData} />
+        <ContractLifecycleTimeline contractData={contractData} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <PortfolioGrowthChart contractData={contractData} />
-        <ContractsByTypeChart contractData={contractData} />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <PortfolioGrowthChart contractData={contractData} />
+          <ContractsByTypeChart contractData={contractData} />
+        </div>
+
+        <ContractRiskRegister contractData={contractData} />
+
+        <AiPortfolioInsights contractData={contractData} />
       </div>
-
-      <ContractRiskRegister contractData={contractData} />
-
-      <AiPortfolioInsights contractData={contractData} />
     </div>
   );
 }
