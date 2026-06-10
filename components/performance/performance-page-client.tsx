@@ -17,6 +17,7 @@ import {
   toggleCriteriaActive,
   updateCriteriaWeight,
 } from "@/app/dashboard/performance/actions";
+import { NeedsAttentionStatCard } from "@/components/performance/needs-attention-stat-card";
 import { PerformanceReviewSheet } from "@/components/performance/performance-review-sheet";
 import { PerformanceScoreBadge } from "@/components/performance/performance-score-badge";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -265,14 +266,7 @@ export function PerformancePageClient({
               : undefined
           }
         />
-        <StatCard
-          title="Needs Attention"
-          value={String(stats.needsAttentionCount)}
-          icon={TrendingUp}
-          iconColor="#ef4444"
-          iconBgClassName="bg-[#ef4444]/15"
-          footnote="Vendors scoring below 5"
-        />
+        <NeedsAttentionStatCard overviews={overviews} />
         <StatCard
           title="Total Reviews"
           value={String(stats.totalReviews)}
