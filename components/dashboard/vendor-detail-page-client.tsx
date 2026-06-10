@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDays, isBefore, parseISO, startOfToday } from "date-fns";
@@ -123,6 +123,11 @@ export function VendorDetailPageClient({
   const [panelOpen, setPanelOpen] = useState(false);
   const [linkContractId, setLinkContractId] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documentType, setDocumentType] = useState("insurance_certificate");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
 
   const health = calculateVendorRelationshipHealth(vendor, linkedData);
@@ -178,8 +183,22 @@ export function VendorDetailPageClient({
   async function handleDocumentUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setUploadError(null);
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+
+    if (!selectedFile) {
+      setUploadError("Please choose a file to upload.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("document_type", documentType);
+    if (expiryDate.trim()) {
+      formData.append("expiry_date", expiryDate.trim());
+    }
+    if (displayName.trim()) {
+      formData.append("name", displayName.trim());
+    }
+
     startTransition(async () => {
       const res = await fetch(`/api/vendors/${vendor.id}/documents`, {
         method: "POST",
@@ -193,7 +212,12 @@ export function VendorDetailPageClient({
       if (json.document) {
         setDocuments((prev) => [json.document as VendorDocument, ...prev]);
       }
-      form.reset();
+      setSelectedFile(null);
+      setDisplayName("");
+      setExpiryDate("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       router.refresh();
     });
   }
@@ -566,37 +590,64 @@ export function VendorDetailPageClient({
               <Upload className="size-4 text-[#F97316]" />
               Upload vendor document
             </h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <input
-                type="file"
-                name="file"
-                required
-                className="text-sm"
-              />
-              <select
-                name="document_type"
-                required
-                className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
-                defaultValue="insurance_certificate"
-              >
-                {VENDOR_DOCUMENT_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                name="expiry_date"
-                className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
-                placeholder="Expiry"
-              />
-              <input
-                type="text"
-                name="name"
-                placeholder="Display name (optional)"
-                className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.xls,.xlsx"
+              onChange={(e) => {
+                setSelectedFile(e.target.files?.[0] ?? null);
+                setUploadError(null);
+              }}
+            />
+            <div className="mt-4 flex flex-col gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="shrink-0 border-zinc-200 bg-white"
+                >
+                  Choose file
+                </Button>
+                <p className="truncate text-sm text-zinc-600">
+                  {selectedFile ? (
+                    <span className="font-medium text-zinc-900">
+                      {selectedFile.name}
+                    </span>
+                  ) : (
+                    "No file chosen"
+                  )}
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <select
+                  value={documentType}
+                  onChange={(e) => setDocumentType(e.target.value)}
+                  required
+                  className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
+                >
+                  {VENDOR_DOCUMENT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
+                  aria-label="Expiry date"
+                />
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Display name (optional)"
+                  className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm"
+                />
+              </div>
             </div>
             {uploadError ? (
               <p className="mt-2 text-sm text-red-600">{uploadError}</p>
