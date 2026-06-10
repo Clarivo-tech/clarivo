@@ -1,7 +1,8 @@
 "use client";
 
-import { Calendar, Crown, Users } from "lucide-react";
+import { Crown, Users } from "lucide-react";
 import { useMemo } from "react";
+import { AverageContractDurationCard } from "@/components/analytics/average-contract-duration-card";
 import { AverageContractValueCard } from "@/components/analytics/average-contract-value-card";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -21,11 +22,6 @@ export function AnalyticsStatsRow({
     [contractData, convert]
   );
 
-  const durationLabel =
-    stats.averageDurationMonths != null
-      ? `${stats.averageDurationMonths.toFixed(1)} mo`
-      : "—";
-
   const highestLabel = stats.highestValue
     ? formatCurrency(stats.highestValue.value, baseCurrency)
     : "—";
@@ -35,14 +31,7 @@ export function AnalyticsStatsRow({
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
       <AverageContractValueCard contractData={contractData} />
-      <StatCard
-        title="Average Contract Duration"
-        value={durationLabel}
-        footnote="Start to end date"
-        icon={Calendar}
-        iconColor="#38BDF8"
-        iconBgClassName="bg-[#38BDF8]/15"
-      />
+      <AverageContractDurationCard contractData={contractData} />
       <StatCard
         title="Highest Value Contract"
         value={highestLabel}

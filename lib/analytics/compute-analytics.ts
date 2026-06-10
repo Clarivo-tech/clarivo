@@ -11,6 +11,7 @@ import {
   startOfMonth,
   startOfToday,
 } from "date-fns";
+import { formatContractLength } from "@/lib/contracts/annual-contract-value";
 import { dedupeContractDataByContractId } from "@/lib/contracts/dedupe-contract-data";
 import { inferHasExitClause } from "@/lib/contracts/health-score";
 import {
@@ -82,6 +83,20 @@ export type AverageValueBreakdown = {
   valuedContractCount: number;
   excludedWithoutValueCount: number;
   average: number | null;
+};
+
+export type DurationBreakdownItem = {
+  contractId: string;
+  vendorName: string;
+  durationMonths: number;
+  durationLabel: string;
+};
+
+export type DurationBreakdown = {
+  items: DurationBreakdownItem[];
+  measuredContractCount: number;
+  excludedWithoutDatesCount: number;
+  averageMonths: number | null;
 };
 
 function safeParseDate(raw: string | null): Date | null {
@@ -173,6 +188,38 @@ export function computeAverageValueBreakdown(
     excludedWithoutValueCount: deduped.length - valuedContractCount,
     average:
       valuedContractCount > 0 ? sumConverted / valuedContractCount : null,
+  };
+}
+
+export function computeDurationBreakdown(rows: ContractData[]): DurationBreakdown {
+  const deduped = dedupeContractDataByContractId(rows);
+  const items: DurationBreakdownItem[] = [];
+
+  for (const row of deduped) {
+    const start = safeParseDate(row.start_date);
+    const end = contractEndDate(row);
+    if (!start || !end || isBefore(end, start)) continue;
+
+    const durationMonths = Math.max(1, differenceInMonths(end, start));
+    items.push({
+      contractId: row.contract_id,
+      vendorName: row.vendor_name?.trim() || "Unknown vendor",
+      durationMonths,
+      durationLabel: formatContractLength(row) ?? `${durationMonths} mo`,
+    });
+  }
+
+  items.sort((a, b) => b.durationMonths - a.durationMonths);
+
+  const measuredContractCount = items.length;
+  const totalMonths = items.reduce((sum, item) => sum + item.durationMonths, 0);
+
+  return {
+    items,
+    measuredContractCount,
+    excludedWithoutDatesCount: deduped.length - measuredContractCount,
+    averageMonths:
+      measuredContractCount > 0 ? totalMonths / measuredContractCount : null,
   };
 }
 
