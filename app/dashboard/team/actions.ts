@@ -7,7 +7,11 @@ import { sendEmail } from "@/lib/email/send";
 import { teamInviteEmail } from "@/lib/email/templates";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { validateTeamInvite } from "@/lib/team/validate-invite";
-import { canInviteMembers, emailRoleAccessDescription } from "@/lib/team/roles";
+import {
+  canInviteMembers,
+  canManageTeam,
+  emailRoleAccessDescription,
+} from "@/lib/team/roles";
 import type { InviteRole, OrganisationRole } from "@/lib/team/types";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 
@@ -17,7 +21,7 @@ function inviteAcceptBaseUrl(): string {
   return "https://clarivo-tech.com/invite";
 }
 
-async function requireTeamManager() {
+async function requireTeamInviter() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,7 +33,25 @@ async function requireTeamManager() {
 
   const context = await getOrgContextForTeam(supabase, user.id);
   if (!context || !canInviteMembers(context.role)) {
-    return { error: "You do not have permission to manage the team." as const };
+    return { error: "You do not have permission to manage invitations." as const };
+  }
+
+  return { supabase, user, context };
+}
+
+async function requireTeamAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." as const };
+  }
+
+  const context = await getOrgContextForTeam(supabase, user.id);
+  if (!context || !canManageTeam(context.role)) {
+    return { error: "You do not have permission to manage team members." as const };
   }
 
   return { supabase, user, context };
@@ -39,7 +61,7 @@ export async function updateMemberRole(
   memberId: string,
   role: OrganisationRole
 ): Promise<{ error?: string; success?: boolean }> {
-  const auth = await requireTeamManager();
+  const auth = await requireTeamAdmin();
   if ("error" in auth && auth.error) return { error: auth.error };
 
   const allowed: OrganisationRole[] = ["admin", "member", "viewer"];
@@ -76,7 +98,7 @@ export async function updateMemberRole(
 export async function removeMember(
   memberId: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const auth = await requireTeamManager();
+  const auth = await requireTeamAdmin();
   if ("error" in auth && auth.error) return { error: auth.error };
 
   const { data: member, error: fetchError } = await auth.supabase
@@ -112,7 +134,7 @@ export async function removeMember(
 export async function cancelInvite(
   inviteId: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const auth = await requireTeamManager();
+  const auth = await requireTeamInviter();
   if ("error" in auth && auth.error) return { error: auth.error };
 
   const { error } = await auth.supabase
@@ -130,7 +152,7 @@ export async function cancelInvite(
 export async function resendInvite(
   inviteId: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const auth = await requireTeamManager();
+  const auth = await requireTeamInviter();
   if ("error" in auth && auth.error) return { error: auth.error };
 
   const { data: invite, error: fetchError } = await auth.supabase

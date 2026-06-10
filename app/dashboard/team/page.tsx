@@ -2,7 +2,11 @@ import { Suspense } from "react";
 import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { syncLatestPendingPaymentForUser } from "@/lib/billing/sync-pending-payment";
 import { getTeamPageData } from "@/lib/team/data";
-import { canManageTeam } from "@/lib/team/roles";
+import {
+  canInviteMembers,
+  canManageTeam,
+  canPurchaseLicenses,
+} from "@/lib/team/roles";
 import { ensureUserOrganisation } from "@/lib/team/org";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 import { TeamBillingSync } from "@/components/dashboard/team-billing-sync";
@@ -42,7 +46,9 @@ export default async function TeamPage() {
     ));
   }
 
-  const canManage = context ? canManageTeam(context.role) : false;
+  const canManageMembers = context ? canManageTeam(context.role) : false;
+  const canInvite = context ? canInviteMembers(context.role) : false;
+  const canPurchase = context ? canPurchaseLicenses(context.role) : false;
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10">
@@ -64,7 +70,9 @@ export default async function TeamPage() {
         members={members}
         invites={invites}
         licenses={licenses}
-        canManage={canManage}
+        canManageMembers={canManageMembers}
+        canInvite={canInvite}
+        canPurchaseLicenses={canPurchase}
         currentUserId={effectiveUserId}
       />
     </div>

@@ -13,8 +13,19 @@ export const INVITE_ROLE_LABELS: Record<InviteRole, string> = {
   viewer: "Viewer",
 };
 
+/** Change roles, remove members, and other admin team management. */
 export function canManageTeam(role: OrganisationRole): boolean {
   return role === "owner" || role === "admin";
+}
+
+/** Invite colleagues, view pending invites, and resend or cancel invitations. */
+export function canInviteMembers(role: OrganisationRole): boolean {
+  return role === "owner" || role === "admin" || role === "member";
+}
+
+/** Purchase additional licenses on an existing subscription. */
+export function canPurchaseLicenses(role: OrganisationRole): boolean {
+  return role === "owner" || role === "admin" || role === "member";
 }
 
 export function canUploadContracts(role: OrganisationRole): boolean {
@@ -27,10 +38,6 @@ export function canEditContracts(role: OrganisationRole): boolean {
 
 export function canUseAiChat(role: OrganisationRole): boolean {
   return role !== "viewer";
-}
-
-export function canInviteMembers(role: OrganisationRole): boolean {
-  return role === "owner" || role === "admin";
 }
 
 export function roleBadgeClass(role: OrganisationRole): string {
@@ -53,7 +60,7 @@ export function inviteRoleAccessDescription(role: InviteRole): string {
     case "admin":
       return "Can invite users, manage contracts, and view all data";
     case "member":
-      return "Can upload and manage contracts, and use AI chat";
+      return "Can upload and manage contracts, invite teammates, add licenses, and use AI chat";
     case "viewer":
       return "Read-only access to dashboard and contracts";
     default:
@@ -66,7 +73,7 @@ export function emailRoleAccessDescription(role: InviteRole): string {
     case "admin":
       return "Invite users, manage contracts, and view all organisation data";
     case "member":
-      return "Upload and manage contracts, and use AI chat";
+      return "Upload and manage contracts, invite teammates, add licenses, and use AI chat";
     case "viewer":
       return "Read-only access to the dashboard and contracts";
     default:

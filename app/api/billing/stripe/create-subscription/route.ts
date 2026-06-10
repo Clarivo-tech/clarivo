@@ -14,6 +14,7 @@ import {
 } from "@/lib/billing/stripe";
 import { updateSubscriptionLicenses } from "@/lib/billing/update-subscription-licenses";
 import { getOrgContextForTeam } from "@/lib/team/org";
+import { canPurchaseLicenses } from "@/lib/team/roles";
 
 export async function POST(request: Request) {
   if (!isStripeConfigured()) {
@@ -53,11 +54,8 @@ export async function POST(request: Request) {
   }
 
   const context = await getOrgContextForTeam(auth.supabase, auth.user.id);
-  if (!context || context.role !== "owner") {
-    return NextResponse.json(
-      { error: "Only the workspace owner can start a subscription." },
-      { status: 403 }
-    );
+  if (!context) {
+    return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
   }
 
   const { data: existingActive } = await billingDb
@@ -68,6 +66,13 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingActive) {
+    if (!canPurchaseLicenses(context.role)) {
+      return NextResponse.json(
+        { error: "You do not have permission to purchase licenses." },
+        { status: 403 }
+      );
+    }
+
     const addResult = await updateSubscriptionLicenses({
       billingDb,
       user: auth.user,
@@ -84,6 +89,13 @@ export async function POST(request: Request) {
       newTotal: addResult.newTotal,
       additionalLicenses: addResult.additionalLicenses,
     });
+  }
+
+  if (context.role !== "owner") {
+    return NextResponse.json(
+      { error: "Only the workspace owner can start a new subscription." },
+      { status: 403 }
+    );
   }
 
   const merchantReference = `clarivo-sub-${context.organisationId}-${crypto.randomUUID()}`;

@@ -10,6 +10,7 @@ import { isAwaitingPayment } from "@/lib/trial/access";
 import { findActiveStripeSubscriptionForOrganisation } from "@/lib/billing/stripe";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { UpgradePageClient } from "@/components/dashboard/upgrade-page-client";
+import { canPurchaseLicenses } from "@/lib/team/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -115,24 +116,27 @@ export default async function UpgradePage({
       )
     : false;
 
+  const canBuy = context ? canPurchaseLicenses(context.role) : false;
+  const isOwner = context?.role === "owner";
+
   if (subscribed) {
     if (addLicensesMode) {
-      if (context?.role !== "owner") {
+      if (!canBuy) {
         redirect("/dashboard/team");
       }
       if (!hasStripe) {
         redirect("/dashboard/upgrade");
       }
-    } else if (context?.role === "owner" && hasStripe) {
+    } else if (isOwner && hasStripe) {
       redirect("/dashboard/upgrade?add=1");
-    } else if (context?.role !== "owner") {
+    } else if (!isOwner) {
       redirect("/dashboard");
     }
   } else if (addLicensesMode) {
     redirect("/dashboard/upgrade");
   }
 
-  if (addLicensesMode && context?.role !== "owner") {
+  if (addLicensesMode && !canBuy) {
     redirect("/dashboard/team");
   }
 
@@ -147,7 +151,8 @@ export default async function UpgradePage({
           organisationName={context?.organisationName ?? "your workspace"}
           currentLicenses={context?.seatLimit ?? 1}
           pricePerLicenseGbp={getPricePerLicenseGbp()}
-          isOwner={context?.role === "owner"}
+          isOwner={isOwner}
+          canPurchaseLicenses={canBuy}
           paymentSuccess={payment === "success"}
           addLicensesMode={addLicensesMode}
           autoCheckout={

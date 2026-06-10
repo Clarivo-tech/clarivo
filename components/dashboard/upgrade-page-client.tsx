@@ -20,6 +20,7 @@ export function UpgradePageClient({
   currentLicenses,
   pricePerLicenseGbp,
   isOwner,
+  canPurchaseLicenses,
   paymentSuccess,
   addLicensesMode = false,
   autoCheckout = false,
@@ -29,6 +30,7 @@ export function UpgradePageClient({
   currentLicenses: number;
   pricePerLicenseGbp: number;
   isOwner: boolean;
+  canPurchaseLicenses: boolean;
   paymentSuccess?: boolean;
   addLicensesMode?: boolean;
   autoCheckout?: boolean;
@@ -193,14 +195,40 @@ export function UpgradePageClient({
     }
   }
 
-  if (!isOwner) {
+  if (!canPurchaseLicenses) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-sans text-xl font-bold">
+            {isAddMode ? "Cannot add licenses" : "Upgrade required"}
+          </CardTitle>
+          <CardDescription>
+            {isAddMode
+              ? `You do not have permission to purchase licenses for ${organisationName}. Ask a workspace owner, admin, or member with billing access.`
+              : `Only the workspace owner can start a new subscription for ${organisationName}. Ask them to upgrade, then you can be invited to the team.`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            render={<Link href={isAddMode ? "/dashboard/team" : "/dashboard"} />}
+            variant="outline"
+          >
+            {isAddMode ? "Back to My Team" : "Back to dashboard"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isOwner && !isAddMode) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="font-sans text-xl font-bold">Upgrade required</CardTitle>
           <CardDescription>
-            Only the workspace owner can purchase licenses for {organisationName}.
-            Ask them to upgrade, then you can be invited to the team.
+            Only the workspace owner can start a new subscription for{" "}
+            {organisationName}. Ask them to upgrade, then you can be invited to
+            the team.
           </CardDescription>
         </CardHeader>
         <CardContent>

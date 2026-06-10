@@ -154,7 +154,7 @@ function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
             : "Ask your workspace owner to upgrade and purchase licenses before you can invite teammates."}
         </CardDescription>
       </CardHeader>
-      {isOwner && (
+      {isOwner ? (
         <CardContent>
           <Button
             render={<Link href={UPGRADE_PAGE_PATH} />}
@@ -163,7 +163,7 @@ function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
             Choose licenses & upgrade
           </Button>
         </CardContent>
-      )}
+      ) : null}
     </Card>
   );
 }
@@ -171,13 +171,13 @@ function UpgradeCtaCard({ isOwner }: { isOwner: boolean }) {
 function InviteTeamMemberCard({
   context,
   licenses,
-  canManage,
-  isOwner,
+  canInvite,
+  canPurchaseLicenses,
 }: {
   context: OrgContext;
   licenses: TeamPageLicenseInfo;
-  canManage: boolean;
-  isOwner: boolean;
+  canInvite: boolean;
+  canPurchaseLicenses: boolean;
 }) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
@@ -190,14 +190,14 @@ function InviteTeamMemberCard({
     ? `colleague@${licenses.allowedEmailDomain}`
     : "colleague@company.com";
 
-  if (!canManage) {
+  if (!canInvite) {
     return (
       <Card className={teamCardClassName}>
         <CardHeader>
           <CardTitle className={teamCardTitleClassName}>Invite teammates</CardTitle>
           <CardDescription>
-            Only owners and admins can send invitations. Ask your workspace admin
-            to invite colleagues.
+            Viewers have read-only access and cannot send invitations. Ask a
+            workspace owner, admin, or member to invite colleagues.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -215,12 +215,12 @@ function InviteTeamMemberCard({
           <CardTitle className={teamCardTitleClassName}>No licenses available</CardTitle>
           <CardDescription>
             All {licenses.purchased} licenses are in use. Cancel a pending invite
-            {isOwner
+            {canPurchaseLicenses
               ? " or purchase more licenses to invite someone else."
               : " or ask your workspace owner to purchase more licenses."}
           </CardDescription>
         </CardHeader>
-        {isOwner ? (
+        {canPurchaseLicenses ? (
           <CardContent>
             <Link
               href={ADD_LICENSES_PAGE_PATH}
@@ -380,14 +380,18 @@ export function TeamPageClient({
   members,
   invites,
   licenses,
-  canManage,
+  canManageMembers,
+  canInvite,
+  canPurchaseLicenses,
   currentUserId,
 }: {
   context: OrgContext | null;
   members: TeamMemberRow[];
   invites: TeamInvite[];
   licenses: TeamPageLicenseInfo;
-  canManage: boolean;
+  canManageMembers: boolean;
+  canInvite: boolean;
+  canPurchaseLicenses: boolean;
   currentUserId: string;
 }) {
   const [actionPending, startActionTransition] = useTransition();
@@ -412,11 +416,11 @@ export function TeamPageClient({
       <InviteTeamMemberCard
         context={context}
         licenses={licenses}
-        canManage={canManage}
-        isOwner={isOwner}
+        canInvite={canInvite}
+        canPurchaseLicenses={canPurchaseLicenses}
       />
 
-      {canManage && invites.length > 0 && (
+      {canInvite && invites.length > 0 && (
         <Card className={teamCardClassName}>
           <CardHeader className="border-b border-zinc-100 pb-4">
             <div className="flex items-center gap-2">
@@ -512,7 +516,7 @@ export function TeamPageClient({
                   <th className="px-6 py-3 font-medium">Member</th>
                   <th className="px-4 py-3 font-medium">Role</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
-                  {canManage && (
+                  {canManageMembers && (
                     <th className="px-6 py-3 font-medium text-right">Actions</th>
                   )}
                 </tr>
@@ -559,7 +563,7 @@ export function TeamPageClient({
                       <td className="px-4 py-4 text-zinc-600">
                         {formatDate(member.joinedAt)}
                       </td>
-                      {canManage && (
+                      {canManageMembers && (
                         <td className="px-6 py-4 text-right">
                           {!isOwnerRow && (
                             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -611,7 +615,7 @@ export function TeamPageClient({
         </CardContent>
       </Card>
 
-      {licenses.isSubscribed && licenses.available > 0 && isOwner && (
+      {licenses.isSubscribed && licenses.available > 0 && canPurchaseLicenses && (
         <p className="text-center text-sm text-zinc-500">
           Need more licenses?{" "}
           <Link

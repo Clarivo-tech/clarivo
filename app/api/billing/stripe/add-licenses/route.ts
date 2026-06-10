@@ -5,6 +5,7 @@ import { MAX_LICENSES } from "@/lib/billing/constants";
 import { isStripeConfigured } from "@/lib/billing/stripe";
 import { updateSubscriptionLicenses } from "@/lib/billing/update-subscription-licenses";
 import { getOrgContextForTeam } from "@/lib/team/org";
+import { canPurchaseLicenses } from "@/lib/team/roles";
 
 export async function POST(request: Request) {
   if (!isStripeConfigured()) {
@@ -30,9 +31,9 @@ export async function POST(request: Request) {
     auth.dataSupabase,
     auth.effectiveUserId
   );
-  if (!context || context.role !== "owner") {
+  if (!context || !canPurchaseLicenses(context.role)) {
     return NextResponse.json(
-      { error: "Only the workspace owner can purchase licenses." },
+      { error: "You do not have permission to purchase licenses." },
       { status: 403 }
     );
   }
