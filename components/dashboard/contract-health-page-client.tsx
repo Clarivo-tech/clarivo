@@ -177,68 +177,6 @@ export function ContractHealthPageClient({
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className={cardClassName}>
-          <div className="border-b border-zinc-100 px-6 py-5">
-            <h2 className="font-sans text-base font-semibold text-zinc-900">
-              How scoring works
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Every contract starts at 10. Points are deducted for risk factors.
-            </p>
-          </div>
-          <ul className="divide-y divide-zinc-100 px-6 py-2">
-            {HEALTH_SCORE_CRITERIA.map((criterion) => (
-              <li key={criterion.title} className="flex gap-4 py-4">
-                <span className="w-10 shrink-0 text-sm font-bold tabular-nums text-[#F97316]">
-                  {criterion.points}
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {criterion.title}
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {criterion.description}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className={cardClassName}>
-          <div className="border-b border-zinc-100 px-6 py-5">
-            <h2 className="font-sans text-base font-semibold text-zinc-900">
-              Score bands
-            </h2>
-          </div>
-          <ul className="space-y-4 px-6 py-5">
-            {HEALTH_SCORE_TIERS.map((band) => (
-              <li
-                key={band.tier}
-                className="flex items-start gap-3 rounded-lg border border-zinc-100 bg-zinc-50/80 px-4 py-3"
-              >
-                <HealthScorePill
-                  score={
-                    band.tier === "high" ? 9 : band.tier === "medium" ? 6 : 3
-                  }
-                  tier={band.tier}
-                />
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {band.label}{" "}
-                    <span className="font-normal text-zinc-500">
-                      ({band.range})
-                    </span>
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-600">{band.description}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-
       <section className={cardClassName}>
         <div className="border-b border-zinc-100 px-6 py-5">
           <h2 className="font-sans text-base font-semibold text-zinc-900">
@@ -371,6 +309,68 @@ export function ContractHealthPageClient({
       </section>
 
       <ContractHealthSuggestions contractData={contractData} />
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className={cardClassName}>
+          <div className="border-b border-zinc-100 px-6 py-5">
+            <h2 className="font-sans text-base font-semibold text-zinc-900">
+              How scoring works
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Every contract starts at 10. Points are deducted for risk factors.
+            </p>
+          </div>
+          <ul className="divide-y divide-zinc-100 px-6 py-2">
+            {HEALTH_SCORE_CRITERIA.map((criterion) => (
+              <li key={criterion.title} className="flex gap-4 py-4">
+                <span className="w-10 shrink-0 text-sm font-bold tabular-nums text-[#F97316]">
+                  {criterion.points}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">
+                    {criterion.title}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    {criterion.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className={cardClassName}>
+          <div className="border-b border-zinc-100 px-6 py-5">
+            <h2 className="font-sans text-base font-semibold text-zinc-900">
+              Score bands
+            </h2>
+          </div>
+          <ul className="space-y-4 px-6 py-5">
+            {HEALTH_SCORE_TIERS.map((band) => (
+              <li
+                key={band.tier}
+                className="flex items-start gap-3 rounded-lg border border-zinc-100 bg-zinc-50/80 px-4 py-3"
+              >
+                <HealthScorePill
+                  score={
+                    band.tier === "high" ? 9 : band.tier === "medium" ? 6 : 3
+                  }
+                  tier={band.tier}
+                />
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">
+                    {band.label}{" "}
+                    <span className="font-normal text-zinc-500">
+                      ({band.range})
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600">{band.description}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </div>
   );
 }
