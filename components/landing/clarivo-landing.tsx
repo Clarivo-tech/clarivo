@@ -10,6 +10,7 @@ import {
   FileText,
   HeartPulse,
   LayoutDashboard,
+  LifeBuoy,
   MessageSquare,
   Settings,
   Sparkles,
@@ -154,13 +155,14 @@ const STATS = [
 
 const MOCK_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, active: true },
+  { label: "Documents", icon: FileText, active: false },
   { label: "Vendors", icon: Building2, active: false },
   { label: "Analytics", icon: BarChart2, active: false },
   { label: "Performance", icon: TrendingUp, active: false },
   { label: "Health", icon: HeartPulse, active: false },
-  { label: "Alerts", icon: Bell, active: false },
+  { label: "Alerts & Reminders", icon: Bell, active: false },
   { label: "My Team", icon: Users, active: false },
-  { label: "Documents", icon: FileText, active: false },
+  { label: "Support", icon: LifeBuoy, active: false },
   { label: "Settings", icon: Settings, active: false },
 ] as const;
 
