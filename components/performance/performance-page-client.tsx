@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronUp,
+  Download,
   Minus,
   Plus,
   TrendingUp,
@@ -39,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
+import { downloadPerformanceOverviewCsv } from "@/lib/performance/export-csv";
 import {
   formatScore,
   scoreColorClass,
@@ -353,13 +355,25 @@ export function PerformancePageClient({
       </Card>
 
       <Card className="border-zinc-200/80 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="font-sans text-lg font-semibold">
-            Vendor Performance Overview
-          </CardTitle>
-          <CardDescription>
-            Latest scores and trends across your vendor portfolio
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle className="font-sans text-lg font-semibold">
+              Vendor Performance Overview
+            </CardTitle>
+            <CardDescription>
+              Latest scores and trends across your vendor portfolio
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={sortedOverviews.length === 0}
+            className="h-10 shrink-0 border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+            onClick={() => downloadPerformanceOverviewCsv(sortedOverviews)}
+          >
+            <Download className="size-4" />
+            Export CSV
+          </Button>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0 pb-2">
           {sortedOverviews.length === 0 ? (
