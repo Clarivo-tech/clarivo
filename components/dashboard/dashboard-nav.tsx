@@ -31,6 +31,12 @@ const navItems = [
     exact: true,
   },
   {
+    href: "/dashboard/docs",
+    label: "Documents",
+    icon: FileText,
+    exact: false,
+  },
+  {
     href: "/dashboard/vendors",
     label: "Vendors",
     icon: Building2,
@@ -64,12 +70,6 @@ const navItems = [
     href: "/dashboard/team",
     label: "My Team",
     icon: Users,
-    exact: false,
-  },
-  {
-    href: "/dashboard/docs",
-    label: "Documents",
-    icon: FileText,
     exact: false,
   },
   {
