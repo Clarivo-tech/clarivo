@@ -246,6 +246,7 @@ export default function SignupPage() {
           email: trimmed.email,
           company: trimmed.company,
           jobTitle: trimmed.jobTitle,
+          paidSignup: isPaidSignup,
           trialExpiresAt: isPaidSignup ? null : trialExpiresAt.toISOString(),
         }),
       });

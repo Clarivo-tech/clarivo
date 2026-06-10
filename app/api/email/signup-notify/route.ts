@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api/auth";
+import { CHECKOUT_UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
 import { sendEmail } from "@/lib/email/send";
-import { founderNotificationEmail, welcomeEmail } from "@/lib/email/templates";
+import {
+  founderNotificationEmail,
+  paidSignupWelcomeEmail,
+  welcomeEmail,
+} from "@/lib/email/templates";
 
 export async function POST(request: Request) {
   const auth = await requireUser();
@@ -13,7 +18,8 @@ export async function POST(request: Request) {
     email?: string;
     company?: string;
     jobTitle?: string;
-    trialExpiresAt?: string;
+    trialExpiresAt?: string | null;
+    paidSignup?: boolean;
   };
 
   try {
@@ -35,13 +41,18 @@ export async function POST(request: Request) {
   const lastName = body.lastName?.trim() || "";
   const company = body.company?.trim() || "Unknown";
   const jobTitle = body.jobTitle?.trim() || "Unknown";
-  const trialExpiresAt = body.trialExpiresAt ?? new Date().toISOString();
+  const paidSignup = body.paidSignup === true;
 
-  const dashboardUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/dashboard" ||
-    "http://localhost:3000/dashboard";
+  const appBase =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    "http://localhost:3000";
+  const dashboardUrl = `${appBase}/dashboard`;
+  const upgradeUrl = `${appBase}${CHECKOUT_UPGRADE_PAGE_PATH}`;
 
-  const welcome = welcomeEmail(firstName, dashboardUrl);
+  const welcome = paidSignup
+    ? paidSignupWelcomeEmail(firstName, upgradeUrl)
+    : welcomeEmail(firstName, dashboardUrl);
+
   const founder = founderNotificationEmail({
     firstName,
     lastName,
@@ -49,7 +60,8 @@ export async function POST(request: Request) {
     company,
     jobTitle,
     signedUpAt: new Date().toISOString(),
-    trialExpiresAt,
+    trialExpiresAt: body.trialExpiresAt ?? null,
+    paidSignup,
   });
 
   try {

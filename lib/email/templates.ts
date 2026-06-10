@@ -56,6 +56,28 @@ export function welcomeEmail(
   return { subject, html };
 }
 
+export function paidSignupWelcomeEmail(
+  firstName: string,
+  upgradeUrl: string
+): EmailTemplate {
+  const subject = "Welcome to Clarivo — complete your subscription";
+  const html = shell(
+    "Welcome to Clarivo",
+    "#F97316",
+    `
+    <p style="margin:0 0 10px 0;font-size:16px;">Welcome to Clarivo, <strong>${firstName}</strong>!</p>
+    <p style="margin:0 0 20px 0;color:#444;">Your account is ready. Complete checkout to activate Pro and start uploading contracts.</p>
+    <div style="display:grid;gap:10px;">
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>1. Choose your licenses</strong><br/><span style="color:#666;">Pick how many teammates need access.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>2. Complete secure payment</strong><br/><span style="color:#666;">Subscribe via Stripe in a few clicks.</span></div>
+      <div style="border:1px solid #eee;border-radius:10px;padding:12px;"><strong>3. Invite your team</strong><br/><span style="color:#666;">Add colleagues once your workspace is active.</span></div>
+    </div>
+    ${ctaButton("Complete checkout", upgradeUrl)}
+  `
+  );
+  return { subject, html };
+}
+
 export function trialReminderEmail(params: {
   firstName: string;
   upgradeUrl: string;
@@ -382,10 +404,20 @@ export function founderNotificationEmail(user: {
   company: string;
   jobTitle: string;
   signedUpAt: string;
-  trialExpiresAt: string;
+  trialExpiresAt?: string | null;
+  paidSignup?: boolean;
   subject?: string;
 }): EmailTemplate {
-  const subject = user.subject ?? `🎉 New Clarivo signup — ${user.company}`;
+  const subject =
+    user.subject ??
+    (user.paidSignup
+      ? `💳 New Clarivo paid signup — ${user.company}`
+      : `🎉 New Clarivo trial signup — ${user.company}`);
+
+  const signupTypeRow = user.paidSignup
+    ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Signup type</td><td style="padding:8px;border-bottom:1px solid #eee;">Paid — checkout pending</td></tr>`
+    : `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Trial expires</td><td style="padding:8px;border-bottom:1px solid #eee;">${user.trialExpiresAt ?? "—"}</td></tr>`;
+
   const html = `
   <div style="margin:0;padding:24px;background:#f5f5f5;font-family:Inter,Arial,sans-serif;color:#111;">
     <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
@@ -399,7 +431,7 @@ export function founderNotificationEmail(user: {
           <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Company</td><td style="padding:8px;border-bottom:1px solid #eee;">${user.company}</td></tr>
           <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Job Title</td><td style="padding:8px;border-bottom:1px solid #eee;">${user.jobTitle}</td></tr>
           <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Signed up</td><td style="padding:8px;border-bottom:1px solid #eee;">${user.signedUpAt}</td></tr>
-          <tr><td style="padding:8px;color:#666;">Trial expires</td><td style="padding:8px;">${user.trialExpiresAt}</td></tr>
+          ${signupTypeRow}
         </table>
       </div>
       <div style="padding:14px 22px;border-top:1px solid #eee;font-size:12px;color:#777;">Clarivo Admin</div>
