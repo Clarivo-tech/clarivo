@@ -7,6 +7,7 @@ import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { bypassesTrialRestrictions } from "@/lib/admin/access";
+import { resolveTrialDocumentsHintDismissed } from "@/lib/trial/documents-hint";
 import { trialExpiryMsFromTimestamp } from "@/lib/trial/constants";
 import { ensureTrialExpiryNotifications } from "@/lib/trial/notify-trial-expired";
 import { isAwaitingPayment } from "@/lib/trial/access";
@@ -127,10 +128,21 @@ export default async function DashboardLayout({
     remainingMs > 0 &&
     remainingLabel != null;
 
+  const documentsHintDismissed = resolveTrialDocumentsHintDismissed(
+    preferences,
+    user.user_metadata
+  );
+  const showDocumentsTrialHint =
+    isTrial &&
+    !operatorAccess &&
+    !impersonating &&
+    !documentsHintDismissed;
+
   return (
     <DashboardShell
       userEmail={user.email ?? "Signed in"}
       isPlatformAdmin={isPlatformAdmin}
+      showDocumentsTrialHint={showDocumentsTrialHint}
       logo={
         <img
           src="/clarivo-logo.png"

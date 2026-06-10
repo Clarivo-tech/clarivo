@@ -27,6 +27,7 @@ import { getContractStoragePath } from "@/lib/storage/contract-path";
 import { userCanAccessContract } from "@/lib/team/contract-access";
 import { getOrgContextForTeam, getUserRole } from "@/lib/team/org";
 import { canEditContracts } from "@/lib/team/roles";
+import { dismissTrialDocumentsHintRecord } from "@/lib/trial/documents-hint";
 import type { ContractData } from "@/lib/types/contracts";
 
 async function assertCanEdit(
@@ -573,5 +574,27 @@ export async function dismissCustomReminder(
   if (result.error) return { error: result.error };
 
   revalidatePath("/dashboard/alerts");
+  return { success: true };
+}
+
+export async function dismissTrialDocumentsHint(): Promise<{
+  error?: string;
+  success?: boolean;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  const result = await dismissTrialDocumentsHintRecord(supabase, user.id);
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/dashboard", "layout");
   return { success: true };
 }

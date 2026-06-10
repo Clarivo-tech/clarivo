@@ -10,17 +10,20 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
 
 export function DashboardShell({
   userEmail,
   isPlatformAdmin = false,
+  showDocumentsTrialHint = false,
   logo,
   children,
 }: {
   userEmail: string;
   isPlatformAdmin?: boolean;
+  showDocumentsTrialHint?: boolean;
   logo: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -41,8 +44,16 @@ export function DashboardShell({
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-3 py-5">
-          <DashboardNav isPlatformAdmin={isPlatformAdmin} />
+        <SidebarContent
+          className={cn(
+            "px-3 py-5",
+            showDocumentsTrialHint && "overflow-visible"
+          )}
+        >
+          <DashboardNav
+            isPlatformAdmin={isPlatformAdmin}
+            showDocumentsTrialHint={showDocumentsTrialHint}
+          />
         </SidebarContent>
 
         <SidebarFooter className="border-t border-white/[0.08] p-4">

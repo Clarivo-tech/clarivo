@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   BarChart2,
   Bell,
@@ -15,6 +16,8 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { dismissTrialDocumentsHint } from "@/app/dashboard/actions";
+import { DocumentsTrialHint } from "@/components/dashboard/documents-trial-hint";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -94,26 +97,61 @@ const platformAdminItem = {
   exact: false,
 };
 
+const DOCUMENTS_HREF = "/dashboard/docs";
+
 export function DashboardNav({
   isPlatformAdmin = false,
+  showDocumentsTrialHint = false,
 }: {
   isPlatformAdmin?: boolean;
+  showDocumentsTrialHint?: boolean;
 }) {
   const pathname = usePathname();
   const items = isPlatformAdmin ? [...navItems, platformAdminItem] : navItems;
+  const [hintVisible, setHintVisible] = useState(showDocumentsTrialHint);
+  const [, startDismissTransition] = useTransition();
+
+  const dismissHint = useCallback(() => {
+    if (!hintVisible) return;
+    setHintVisible(false);
+    startDismissTransition(async () => {
+      await dismissTrialDocumentsHint();
+    });
+  }, [hintVisible]);
+
+  useEffect(() => {
+    setHintVisible(showDocumentsTrialHint);
+  }, [showDocumentsTrialHint]);
+
+  useEffect(() => {
+    if (
+      hintVisible &&
+      (pathname === DOCUMENTS_HREF || pathname.startsWith(`${DOCUMENTS_HREF}/`))
+    ) {
+      dismissHint();
+    }
+  }, [pathname, hintVisible, dismissHint]);
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu className="gap-1">
+      <SidebarGroupContent
+        className={cn(hintVisible && "overflow-visible")}
+      >
+        <SidebarMenu className={cn("gap-1", hintVisible && "overflow-visible")}>
           {items.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
               : pathname === item.href ||
                 pathname.startsWith(`${item.href}/`);
+            const isDocuments = item.href === DOCUMENTS_HREF;
 
             return (
-              <SidebarMenuItem key={item.href}>
+              <SidebarMenuItem
+                key={item.href}
+                className={cn(
+                  isDocuments && hintVisible && "relative overflow-visible"
+                )}
+              >
                 <SidebarMenuButton
                   isActive={isActive}
                   className={cn(
@@ -123,12 +161,18 @@ export function DashboardNav({
                       : "text-zinc-400 hover:bg-white/[0.06] hover:text-white data-active:text-white"
                   )}
                   render={
-                    <Link href={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={isDocuments && hintVisible ? dismissHint : undefined}
+                    >
                       <item.icon className={cn(isActive && "text-white")} />
                       <span>{item.label}</span>
                     </Link>
                   }
                 />
+                {isDocuments && hintVisible ? (
+                  <DocumentsTrialHint onDismiss={dismissHint} />
+                ) : null}
               </SidebarMenuItem>
             );
           })}

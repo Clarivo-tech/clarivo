@@ -23,6 +23,7 @@ export type UserPreferences = {
   contact_number: string | null;
   reminder_sent: boolean | null;
   expiry_notified: boolean | null;
+  trial_documents_hint_dismissed: boolean | null;
   remind_90_days: boolean | null;
   remind_60_days: boolean | null;
   remind_30_days: boolean | null;
@@ -74,6 +75,7 @@ export async function getUserPreferences(
     contact_number: null,
     reminder_sent: false,
     expiry_notified: false,
+    trial_documents_hint_dismissed: false,
     remind_90_days: true,
     remind_60_days: true,
     remind_30_days: true,
