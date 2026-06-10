@@ -2,6 +2,12 @@ import { differenceInCalendarDays, format, parseISO, startOfToday, subDays } fro
 import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cron/auth";
 import { sendEmail } from "@/lib/email/send";
+import { sendCustomReminderEmail } from "@/lib/email/custom-reminder-email";
+import {
+  listDueCustomRemindersForUser,
+  markCustomRemindersSent,
+} from "@/lib/data/custom-reminders";
+import { listReminderPreferenceRows } from "@/lib/data/reminder-preferences";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function reminderEmailHtml(input: {
@@ -50,19 +56,6 @@ function reminderEmailHtml(input: {
   </div>`;
 }
 
-type PrefRow = {
-  user_id: string;
-  first_name: string | null;
-  remind_90_days: boolean | null;
-  remind_60_days: boolean | null;
-  remind_30_days: boolean | null;
-  remind_14_days: boolean | null;
-  remind_7_days: boolean | null;
-  remind_renewal: boolean | null;
-  remind_notice_deadline: boolean | null;
-  remind_expiry: boolean | null;
-};
-
 async function runSendReminders(request: Request) {
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -74,19 +67,22 @@ async function runSendReminders(request: Request) {
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/dashboard" ||
     "http://localhost:3000/dashboard";
 
-  const { data: prefs, error: prefsError } = await admin
-    .from("user_preferences")
-    .select(
-      "user_id, first_name, remind_90_days, remind_60_days, remind_30_days, remind_14_days, remind_7_days, remind_renewal, remind_notice_deadline, remind_expiry"
-    );
+  const { rows: prefs, error: prefsError } =
+    await listReminderPreferenceRows(admin);
 
   if (prefsError) {
-    return NextResponse.json({ error: prefsError.message }, { status: 500 });
+    return NextResponse.json({ error: prefsError }, { status: 500 });
   }
 
   let sent = 0;
 
-  for (const pref of (prefs ?? []) as PrefRow[]) {
+  const todayIso = format(today, "yyyy-MM-dd");
+
+  for (const pref of prefs) {
+    const { data: userResult } = await admin.auth.admin.getUserById(pref.user_id);
+    const email = userResult.user?.email;
+    if (!email) continue;
+
     const enabledDays = new Set<number>();
     if (pref.remind_90_days ?? true) enabledDays.add(90);
     if (pref.remind_60_days ?? true) enabledDays.add(60);
@@ -94,103 +90,92 @@ async function runSendReminders(request: Request) {
     if (pref.remind_14_days ?? false) enabledDays.add(14);
     if (pref.remind_7_days ?? false) enabledDays.add(7);
 
-    if (enabledDays.size === 0) continue;
+    if (enabledDays.size > 0) {
+      const { data: contracts } = await admin
+        .from("contracts")
+        .select("id")
+        .eq("user_id", pref.user_id)
+        .eq("is_active", true);
 
-    const { data: userResult } = await admin.auth.admin.getUserById(pref.user_id);
-    const email = userResult.user?.email;
-    if (!email) continue;
+      const contractIds = (contracts ?? []).map((c) => c.id);
 
-    const { data: contracts } = await admin
-      .from("contracts")
-      .select("id")
-      .eq("user_id", pref.user_id)
-      .eq("is_active", true);
+      if (contractIds.length > 0) {
+        const { data: rows } = await admin
+          .from("contract_data")
+          .select(
+            "contract_id, vendor_name, contract_value, renewal_date, end_date, notice_period_days"
+          )
+          .in("contract_id", contractIds);
 
-    const contractIds = (contracts ?? []).map((c) => c.id);
-    if (contractIds.length === 0) continue;
+        for (const row of rows ?? []) {
+          const events: Array<{ type: "renewal" | "notice" | "expiry"; date: string | null }> = [
+            { type: "renewal", date: row.renewal_date },
+            { type: "expiry", date: row.end_date },
+          ];
 
-    const { data: rows } = await admin
-      .from("contract_data")
-      .select("contract_id, vendor_name, contract_value, renewal_date, end_date, notice_period_days")
-      .in("contract_id", contractIds);
+          if (row.renewal_date && row.notice_period_days != null) {
+            const deadline = subDays(parseISO(row.renewal_date), row.notice_period_days);
+            events.push({ type: "notice", date: deadline.toISOString() });
+          }
 
-    for (const row of rows ?? []) {
-      const events: Array<{ type: "renewal" | "notice" | "expiry"; date: string | null }> = [
-        { type: "renewal", date: row.renewal_date },
-        { type: "expiry", date: row.end_date },
-      ];
+          for (const event of events) {
+            if (!event.date) continue;
+            const eventDate = parseISO(event.date);
+            const days = differenceInCalendarDays(eventDate, today);
+            if (!enabledDays.has(days)) continue;
+            if (event.type === "renewal" && !(pref.remind_renewal ?? true)) continue;
+            if (event.type === "notice" && !(pref.remind_notice_deadline ?? true)) continue;
+            if (event.type === "expiry" && !(pref.remind_expiry ?? true)) continue;
 
-      if (row.renewal_date && row.notice_period_days != null) {
-        const deadline = subDays(parseISO(row.renewal_date), row.notice_period_days);
-        events.push({ type: "notice", date: deadline.toISOString() });
-      }
+            const noticeWarning =
+              row.renewal_date && row.notice_period_days != null
+                ? differenceInCalendarDays(
+                    subDays(parseISO(row.renewal_date), row.notice_period_days),
+                    today
+                  ) < 0
+                : false;
 
-      for (const event of events) {
-        if (!event.date) continue;
-        const eventDate = parseISO(event.date);
-        const days = differenceInCalendarDays(eventDate, today);
-        if (!enabledDays.has(days)) continue;
-        if (event.type === "renewal" && !(pref.remind_renewal ?? true)) continue;
-        if (event.type === "notice" && !(pref.remind_notice_deadline ?? true)) continue;
-        if (event.type === "expiry" && !(pref.remind_expiry ?? true)) continue;
-
-        const noticeWarning =
-          row.renewal_date && row.notice_period_days != null
-            ? differenceInCalendarDays(
-                subDays(parseISO(row.renewal_date), row.notice_period_days),
-                today
-              ) < 0
-            : false;
-
-        await sendEmail({
-          to: email,
-          subject: `⏰ Contract reminder: ${row.vendor_name ?? "Vendor"} renews in ${days} days`,
-          html: reminderEmailHtml({
-            firstName: pref.first_name ?? "there",
-            days,
-            vendor: row.vendor_name ?? "Unknown vendor",
-            contractValue: row.contract_value ?? null,
-            renewalDate: row.renewal_date,
-            noticePeriodDays: row.notice_period_days,
-            warningPassedNotice: noticeWarning,
-            dashboardUrl,
-          }),
-        });
-        sent += 1;
+            await sendEmail({
+              to: email,
+              subject: `⏰ Contract reminder: ${row.vendor_name ?? "Vendor"} renews in ${days} days`,
+              html: reminderEmailHtml({
+                firstName: pref.first_name ?? "there",
+                days,
+                vendor: row.vendor_name ?? "Unknown vendor",
+                contractValue: row.contract_value ?? null,
+                renewalDate: row.renewal_date,
+                noticePeriodDays: row.notice_period_days,
+                warningPassedNotice: noticeWarning,
+                dashboardUrl,
+              }),
+            });
+            sent += 1;
+          }
+        }
       }
     }
 
-    const todayIso = format(today, "yyyy-MM-dd");
-    const { data: customReminders } = await admin
-      .from("reminders")
-      .select("id, title, reminder_date, notes")
-      .eq("user_id", pref.user_id)
-      .eq("dismissed", false)
-      .eq("sent", false)
-      .eq("reminder_date", todayIso);
+    const customReminders = await listDueCustomRemindersForUser(
+      admin,
+      pref.user_id,
+      todayIso,
+      userResult.user?.user_metadata
+    );
 
     const sentReminderIds: string[] = [];
-    for (const reminder of customReminders ?? []) {
-      await sendEmail({
-        to: email,
-        subject: `⏰ Reminder: ${reminder.title}`,
-        html: `
-          <div style="font-family:Inter,Arial,sans-serif;padding:20px;">
-            <h2 style="margin:0 0 8px 0;color:#F97316;">Clarivo Reminder</h2>
-            <p style="margin:0 0 8px 0;">${reminder.title}</p>
-            <p style="margin:0 0 8px 0;color:#555;">${reminder.notes ?? ""}</p>
-            <a href="${dashboardUrl}" style="display:inline-block;background:#F97316;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;font-weight:600;">Open dashboard</a>
-          </div>`,
-      });
+    for (const reminder of customReminders) {
+      await sendCustomReminderEmail(email, reminder);
       sentReminderIds.push(reminder.id);
       sent += 1;
     }
 
     if (sentReminderIds.length > 0) {
-      await admin
-        .from("reminders")
-        .update({ sent: true })
-        .in("id", sentReminderIds);
+      await markCustomRemindersSent(
+        admin,
+        pref.user_id,
+        sentReminderIds,
+        userResult.user?.user_metadata
+      );
     }
   }
 

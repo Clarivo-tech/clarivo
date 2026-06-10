@@ -12,6 +12,7 @@ import {
   dismissCustomReminder,
   updateReminderPreferences,
 } from "@/app/dashboard/actions";
+import type { ReminderPreferences } from "@/lib/data/reminder-preferences";
 import type { Contract, ContractData } from "@/lib/types/contracts";
 import { cn } from "@/lib/utils";
 
@@ -35,17 +36,6 @@ type ReminderRow = {
   reminder_date: string;
   notes: string | null;
   dismissed: boolean | null;
-};
-
-type ReminderPrefs = {
-  remind_90_days: boolean;
-  remind_60_days: boolean;
-  remind_30_days: boolean;
-  remind_14_days: boolean;
-  remind_7_days: boolean;
-  remind_renewal: boolean;
-  remind_notice_deadline: boolean;
-  remind_expiry: boolean;
 };
 
 function parseDate(value: string | null): Date | null {
@@ -108,11 +98,15 @@ export function AlertsPageClient({
   contractData: ContractData[];
   contracts: Contract[];
   reminders: ReminderRow[];
-  initialPrefs: ReminderPrefs;
+  initialPrefs: ReminderPreferences;
 }) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [prefs, setPrefs] = useState<ReminderPrefs>(initialPrefs);
+  const [prefs, setPrefs] = useState<ReminderPreferences>(initialPrefs);
   const [prefsPending, startPrefsTransition] = useTransition();
+  const [prefsMessage, setPrefsMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const [contractId, setContractId] = useState(contracts[0]?.id ?? "");
   const [title, setTitle] = useState("");
@@ -134,7 +128,10 @@ export function AlertsPageClient({
     [contracts]
   );
 
-  function updatePref<K extends keyof ReminderPrefs>(key: K, value: boolean) {
+  function updatePref<K extends keyof ReminderPreferences>(
+    key: K,
+    value: boolean
+  ) {
     setPrefs((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -142,8 +139,14 @@ export function AlertsPageClient({
     startPrefsTransition(async () => {
       const result = await updateReminderPreferences(prefs);
       if (result.error) {
-        alert(result.error);
+        setPrefsMessage({ text: result.error, type: "error" });
+        return;
       }
+      setPrefsMessage({
+        text: "Reminder preferences saved.",
+        type: "success",
+      });
+      window.setTimeout(() => setPrefsMessage(null), 4000);
     });
   }
 
@@ -157,13 +160,18 @@ export function AlertsPageClient({
         notes,
       });
       if (result.error) {
-        alert(result.error);
+        setPrefsMessage({ text: result.error, type: "error" });
         return;
       }
+      setPrefsMessage({
+        text: "Custom reminder saved.",
+        type: "success",
+      });
+      window.setTimeout(() => setPrefsMessage(null), 4000);
       setTitle("");
       setReminderDate("");
       setNotes("");
-      location.reload();
+      window.location.reload();
     });
   }
 
@@ -172,7 +180,7 @@ export function AlertsPageClient({
     void (async () => {
       const result = await dismissCustomReminder(reminderId);
       if (result.error) {
-        alert(result.error);
+        setPrefsMessage({ text: result.error, type: "error" });
       } else {
         setCustomRows((prev) => prev.filter((row) => row.id !== reminderId));
       }
@@ -182,6 +190,20 @@ export function AlertsPageClient({
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8">
+      {prefsMessage ? (
+        <div
+          role="status"
+          className={cn(
+            "fixed top-6 right-6 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-lg",
+            prefsMessage.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-red-200 bg-red-50 text-red-900"
+          )}
+        >
+          {prefsMessage.text}
+        </div>
+      ) : null}
+
       <section className="rounded-xl border border-zinc-800 bg-[#111827] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
         <div className="border-b border-zinc-800 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -269,9 +291,12 @@ export function AlertsPageClient({
               <label key={key} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3">
                 <span className="text-sm font-medium text-zinc-700">{label}</span>
                 <Switch
-                  checked={Boolean(prefs[key as keyof ReminderPrefs])}
+                  checked={Boolean(prefs[key as keyof ReminderPreferences])}
                   onCheckedChange={(checked) =>
-                    updatePref(key as keyof ReminderPrefs, Boolean(checked))
+                    updatePref(
+                      key as keyof ReminderPreferences,
+                      Boolean(checked)
+                    )
                   }
                 />
               </label>
@@ -289,9 +314,12 @@ export function AlertsPageClient({
               <label key={key} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2.5">
                 <span className="text-sm text-zinc-700">{label}</span>
                 <Switch
-                  checked={Boolean(prefs[key as keyof ReminderPrefs])}
+                  checked={Boolean(prefs[key as keyof ReminderPreferences])}
                   onCheckedChange={(checked) =>
-                    updatePref(key as keyof ReminderPrefs, Boolean(checked))
+                    updatePref(
+                      key as keyof ReminderPreferences,
+                      Boolean(checked)
+                    )
                   }
                 />
               </label>
@@ -315,7 +343,8 @@ export function AlertsPageClient({
         <CardHeader>
           <CardTitle className={cardTitleClassName}>Custom Reminders</CardTitle>
           <CardDescription>
-            Add manual reminders for one-off follow ups.
+            Add manual reminders for one-off follow ups. Reminders for today are
+            emailed right away; future dates are sent at 8:00 AM UTC on that day.
           </CardDescription>
         </CardHeader>
         <CardContent>

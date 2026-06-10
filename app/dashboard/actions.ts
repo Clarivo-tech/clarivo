@@ -9,6 +9,18 @@ import {
   getUserPreferences,
   upsertBaseCurrency,
 } from "@/lib/data/user-preferences";
+import {
+  type CustomReminderInput,
+  dismissCustomReminderRecord,
+  insertCustomReminder,
+  isReminderDueToday,
+  markCustomRemindersSentForOwner,
+} from "@/lib/data/custom-reminders";
+import { sendCustomReminderEmail } from "@/lib/email/custom-reminder-email";
+import {
+  type ReminderPreferences,
+  upsertReminderPreferences,
+} from "@/lib/data/reminder-preferences";
 import { sendEmail } from "@/lib/email/send";
 import { founderSubscriptionCancellationRequestEmail } from "@/lib/email/templates";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
@@ -483,16 +495,9 @@ export async function dismissRenewalAlert(
   return { contractData: data as ContractData };
 }
 
-export async function updateReminderPreferences(input: {
-  remind_90_days: boolean;
-  remind_60_days: boolean;
-  remind_30_days: boolean;
-  remind_14_days: boolean;
-  remind_7_days: boolean;
-  remind_renewal: boolean;
-  remind_notice_deadline: boolean;
-  remind_expiry: boolean;
-}): Promise<{ error?: string; success?: boolean }> {
+export async function updateReminderPreferences(
+  input: ReminderPreferences
+): Promise<{ error?: string; success?: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -500,27 +505,16 @@ export async function updateReminderPreferences(input: {
 
   if (!user) return { error: "You must be signed in." };
 
-  const { error } = await supabase.from("user_preferences").upsert(
-    {
-      user_id: user.id,
-      ...input,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
-
-  if (error) return { error: error.message };
+  const result = await upsertReminderPreferences(supabase, user.id, input);
+  if (result.error) return { error: result.error };
 
   revalidatePath("/dashboard/alerts");
   return { success: true };
 }
 
-export async function createCustomReminder(input: {
-  contract_id: string;
-  title: string;
-  reminder_date: string;
-  notes?: string;
-}): Promise<{ error?: string; success?: boolean }> {
+export async function createCustomReminder(
+  input: CustomReminderInput
+): Promise<{ error?: string; success?: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -528,18 +522,32 @@ export async function createCustomReminder(input: {
 
   if (!user) return { error: "You must be signed in." };
 
-  const title = input.title.trim();
-  if (!title) return { error: "Reminder title is required." };
+  if (!input.title.trim()) return { error: "Reminder title is required." };
 
-  const { error } = await supabase.from("reminders").insert({
-    user_id: user.id,
-    contract_id: input.contract_id,
-    title,
-    reminder_date: input.reminder_date,
-    notes: input.notes?.trim() || null,
-  });
+  const result = await insertCustomReminder(
+    supabase,
+    user.id,
+    input,
+    user.user_metadata
+  );
 
-  if (error) return { error: error.message };
+  if (result.error) return { error: result.error };
+
+  if (result.reminder && isReminderDueToday(result.reminder.reminder_date) && user.email) {
+    try {
+      await sendCustomReminderEmail(user.email, result.reminder);
+      const {
+        data: { user: freshUser },
+      } = await supabase.auth.getUser();
+      await markCustomRemindersSentForOwner(
+        supabase,
+        [result.reminder.id],
+        freshUser?.user_metadata
+      );
+    } catch (error) {
+      console.error("[reminders] immediate email:", error);
+    }
+  }
 
   revalidatePath("/dashboard/alerts");
   return { success: true };
@@ -555,13 +563,14 @@ export async function dismissCustomReminder(
 
   if (!user) return { error: "You must be signed in." };
 
-  const { error } = await supabase
-    .from("reminders")
-    .update({ dismissed: true })
-    .eq("id", reminderId)
-    .eq("user_id", user.id);
+  const result = await dismissCustomReminderRecord(
+    supabase,
+    user.id,
+    reminderId,
+    user.user_metadata
+  );
 
-  if (error) return { error: error.message };
+  if (result.error) return { error: result.error };
 
   revalidatePath("/dashboard/alerts");
   return { success: true };
