@@ -66,6 +66,12 @@ const FEATURES = [
     description:
       "Score contracts by risk criteria and monitor vendor relationship health with clear AI-backed recommendations.",
   },
+  {
+    icon: "🛟",
+    title: "In-App Support",
+    description:
+      "Raise support tickets from your dashboard, attach screenshots, and get help with bugs, billing, feature requests, and general questions.",
+  },
 ];
 
 const STEPS = [
