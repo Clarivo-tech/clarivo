@@ -12,7 +12,7 @@ import { canInviteMembers, emailRoleAccessDescription } from "@/lib/team/roles";
 import type { InviteRole } from "@/lib/team/types";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 
-const INVITE_ROLES: InviteRole[] = ["admin", "member", "viewer"];
+const INVITE_ROLE: InviteRole = "member";
 
 function inviteAcceptBaseUrl(): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const auth = await requireUser();
   if (!auth.user) return auth.response;
 
-  let body: { email?: string; role?: string };
+  let body: { email?: string };
   try {
     body = await request.json();
   } catch {
@@ -32,14 +32,10 @@ export async function POST(request: Request) {
   }
 
   const rawEmail = body.email?.trim().toLowerCase();
-  const role = (body.role as InviteRole | undefined) ?? "member";
+  const role = INVITE_ROLE;
 
   if (!rawEmail) {
     return NextResponse.json({ error: "Email is required." }, { status: 400 });
-  }
-
-  if (!INVITE_ROLES.includes(role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
   }
 
   const context = await getOrgContextForTeam(auth.supabase, auth.user.id);
@@ -89,7 +85,7 @@ export async function POST(request: Request) {
     inviterFirstName,
     inviterName,
     organisationName: context.organisationName,
-    role: role.charAt(0).toUpperCase() + role.slice(1),
+    role: "Member",
     roleDescription: emailRoleAccessDescription(role),
     acceptUrl,
   });
@@ -99,7 +95,7 @@ export async function POST(request: Request) {
     inviterName,
     inviterEmail,
     inviteeEmail: email,
-    role: role.charAt(0).toUpperCase() + role.slice(1),
+    role: "Member",
   });
 
   await Promise.allSettled([

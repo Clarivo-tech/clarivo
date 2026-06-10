@@ -136,7 +136,8 @@ export function DocsPageClient({
             <DocsUpload onUploadComplete={handleUploadComplete} />
           ) : (
             <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-              You have read-only access. Contact an admin to upload contracts.
+              You do not have permission to upload contracts. Contact your
+              workspace owner for access.
             </p>
           )}
         </div>

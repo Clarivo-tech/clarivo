@@ -12,7 +12,6 @@ import {
   cancelInvite,
   removeMember,
   resendInvite,
-  updateMemberRole,
 } from "@/app/dashboard/team/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,11 +22,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ROLE_LABELS, roleBadgeClass } from "@/lib/team/roles";
+import {
+  displayRoleLabel,
+  normalizeOrganisationRole,
+  roleBadgeClass,
+} from "@/lib/team/roles";
 import { formatDomainHint } from "@/lib/team/email-domain";
 import type {
   OrgContext,
-  OrganisationRole,
   TeamInvite,
   TeamMemberRow,
   TeamPageLicenseInfo,
@@ -196,8 +198,8 @@ function InviteTeamMemberCard({
         <CardHeader>
           <CardTitle className={teamCardTitleClassName}>Invite teammates</CardTitle>
           <CardDescription>
-            Viewers have read-only access and cannot send invitations. Ask a
-            workspace owner, admin, or member to invite colleagues.
+            You do not have permission to invite teammates. Ask your workspace
+            owner if you need access.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -554,10 +556,10 @@ export function TeamPageClient({
                         <span
                           className={cn(
                             "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                            roleBadgeClass(member.role)
+                            roleBadgeClass(normalizeOrganisationRole(member.role))
                           )}
                         >
-                          {ROLE_LABELS[member.role]}
+                          {displayRoleLabel(member.role)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-zinc-600">
@@ -567,22 +569,6 @@ export function TeamPageClient({
                         <td className="px-6 py-4 text-right">
                           {!isOwnerRow && (
                             <div className="flex flex-wrap items-center justify-end gap-2">
-                              <select
-                                className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900"
-                                value={member.role}
-                                disabled={actionPending || isSelf}
-                                onChange={(e) => {
-                                  const role = e.target
-                                    .value as OrganisationRole;
-                                  startActionTransition(async () => {
-                                    await updateMemberRole(member.id, role);
-                                  });
-                                }}
-                              >
-                                <option value="admin">Admin</option>
-                                <option value="member">Member</option>
-                                <option value="viewer">Viewer</option>
-                              </select>
                               <Button
                                 type="button"
                                 variant="outline"

@@ -64,8 +64,7 @@ export default async function InvitePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const roleLabel =
-    invite.role.charAt(0).toUpperCase() + invite.role.slice(1);
+  const roleLabel = "Member";
 
   return (
     <InviteShell>

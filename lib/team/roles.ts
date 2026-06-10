@@ -1,82 +1,62 @@
-import type { InviteRole, OrganisationRole } from "@/lib/team/types";
+import type { InviteRole, OrganisationRole, StoredOrganisationRole } from "@/lib/team/types";
 
 export const ROLE_LABELS: Record<OrganisationRole, string> = {
   owner: "Owner",
-  admin: "Admin",
   member: "Member",
-  viewer: "Viewer",
 };
 
-export const INVITE_ROLE_LABELS: Record<InviteRole, string> = {
-  admin: "Admin",
-  member: "Member",
-  viewer: "Viewer",
-};
+export function normalizeOrganisationRole(
+  role: string | null | undefined
+): OrganisationRole {
+  return role === "owner" ? "owner" : "member";
+}
 
-/** Change roles, remove members, and other admin team management. */
+export function displayRoleLabel(role: StoredOrganisationRole | string): string {
+  return ROLE_LABELS[normalizeOrganisationRole(role)];
+}
+
+/** Change roles, remove members, and other owner-only team management. */
 export function canManageTeam(role: OrganisationRole): boolean {
-  return role === "owner" || role === "admin";
+  return role === "owner";
 }
 
 /** Invite colleagues, view pending invites, and resend or cancel invitations. */
 export function canInviteMembers(role: OrganisationRole): boolean {
-  return role === "owner" || role === "admin" || role === "member";
+  return role === "owner" || role === "member";
 }
 
 /** Purchase additional licenses on an existing subscription. */
 export function canPurchaseLicenses(role: OrganisationRole): boolean {
-  return role === "owner" || role === "admin" || role === "member";
+  return role === "owner" || role === "member";
 }
 
 export function canUploadContracts(role: OrganisationRole): boolean {
-  return role !== "viewer";
+  return true;
 }
 
 export function canEditContracts(role: OrganisationRole): boolean {
-  return role !== "viewer";
+  return true;
 }
 
 export function canUseAiChat(role: OrganisationRole): boolean {
-  return role !== "viewer";
+  return true;
 }
 
 export function roleBadgeClass(role: OrganisationRole): string {
   switch (role) {
     case "owner":
       return "bg-orange-500/15 text-orange-400 border-orange-500/30";
-    case "admin":
-      return "bg-blue-500/15 text-blue-400 border-blue-500/30";
     case "member":
       return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-    case "viewer":
-      return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
     default:
-      return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+      return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
   }
 }
 
-export function inviteRoleAccessDescription(role: InviteRole): string {
-  switch (role) {
-    case "admin":
-      return "Can invite users, manage contracts, and view all data";
-    case "member":
-      return "Can upload and manage contracts, invite teammates, add licenses, and use AI chat";
-    case "viewer":
-      return "Read-only access to dashboard and contracts";
-    default:
-      return "";
-  }
+export function inviteRoleAccessDescription(_role: InviteRole): string {
+  return "Can upload and manage contracts, invite teammates, add licenses, and use AI chat";
 }
 
-export function emailRoleAccessDescription(role: InviteRole): string {
-  switch (role) {
-    case "admin":
-      return "Invite users, manage contracts, and view all organisation data";
-    case "member":
-      return "Upload and manage contracts, invite teammates, add licenses, and use AI chat";
-    case "viewer":
-      return "Read-only access to the dashboard and contracts";
-    default:
-      return "";
-  }
+export function emailRoleAccessDescription(_role: InviteRole): string {
+  return "Upload and manage contracts, invite teammates, add licenses, and use AI chat";
 }

@@ -174,7 +174,7 @@ async function completeInviteAccept(
     await admin.from("organisation_members").insert({
       organisation_id: invite.organisation_id,
       user_id: userId,
-      role: invite.role,
+      role: "member",
       invited_email: invite.email,
       status: "active",
     });
@@ -182,7 +182,7 @@ async function completeInviteAccept(
     await admin
       .from("organisation_members")
       .update({
-        role: invite.role,
+        role: "member",
         status: "active",
         invited_email: invite.email,
       })

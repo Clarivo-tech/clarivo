@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { extractEmailDomain } from "@/lib/team/email-domain";
-import type { OrgContext, OrganisationRole } from "@/lib/team/types";
+import { normalizeOrganisationRole } from "@/lib/team/roles";
+import type { OrgContext, OrganisationRole, StoredOrganisationRole } from "@/lib/team/types";
 
 function mapOrgContext(
   org: {
@@ -75,7 +76,7 @@ export async function getUserRole(
     return null;
   }
 
-  return data.role as OrganisationRole;
+  return normalizeOrganisationRole(data.role as StoredOrganisationRole);
 }
 
 export async function getOrgContext(
@@ -187,11 +188,13 @@ async function getOrgContextWithClient(
     .eq("status", "active")
     .maybeSingle();
 
-  const role =
-    (member?.role as OrganisationRole | undefined) ??
+  const storedRole =
+    (member?.role as StoredOrganisationRole | undefined) ??
     (org.owner_id === userId ? "owner" : null);
 
-  if (!role) return null;
+  if (!storedRole) return null;
+
+  const role = normalizeOrganisationRole(storedRole);
 
   return mapOrgContext(
     org as {

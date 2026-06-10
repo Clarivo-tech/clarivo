@@ -204,7 +204,7 @@ export function UpgradePageClient({
           </CardTitle>
           <CardDescription>
             {isAddMode
-              ? `You do not have permission to purchase licenses for ${organisationName}. Ask a workspace owner, admin, or member with billing access.`
+              ? `You do not have permission to purchase licenses for ${organisationName}. Ask your workspace owner or a member with billing access.`
               : `Only the workspace owner can start a new subscription for ${organisationName}. Ask them to upgrade, then you can be invited to the team.`}
           </CardDescription>
         </CardHeader>

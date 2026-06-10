@@ -12,7 +12,7 @@ import {
   canManageTeam,
   emailRoleAccessDescription,
 } from "@/lib/team/roles";
-import type { InviteRole, OrganisationRole } from "@/lib/team/types";
+import type { InviteRole } from "@/lib/team/types";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 
 function inviteAcceptBaseUrl(): string {
@@ -55,44 +55,6 @@ async function requireTeamAdmin() {
   }
 
   return { supabase, user, context };
-}
-
-export async function updateMemberRole(
-  memberId: string,
-  role: OrganisationRole
-): Promise<{ error?: string; success?: boolean }> {
-  const auth = await requireTeamAdmin();
-  if ("error" in auth && auth.error) return { error: auth.error };
-
-  const allowed: OrganisationRole[] = ["admin", "member", "viewer"];
-  if (!allowed.includes(role)) {
-    return { error: "Invalid role." };
-  }
-
-  const { data: member, error: fetchError } = await auth.supabase
-    .from("organisation_members")
-    .select("id, role, organisation_id, user_id")
-    .eq("id", memberId)
-    .eq("organisation_id", auth.context!.organisationId)
-    .maybeSingle();
-
-  if (fetchError || !member) {
-    return { error: "Member not found." };
-  }
-
-  if (member.role === "owner") {
-    return { error: "The owner's role cannot be changed." };
-  }
-
-  const { error } = await auth.supabase
-    .from("organisation_members")
-    .update({ role })
-    .eq("id", memberId);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/dashboard/team");
-  return { success: true };
 }
 
 export async function removeMember(
@@ -191,13 +153,13 @@ export async function resendInvite(
   const inviterFirstName = prefs.first_name?.trim() || "Someone";
   const inviterLastName = prefs.last_name?.trim() || "";
   const inviterName = `${inviterFirstName} ${inviterLastName}`.trim();
-  const role = invite.role as InviteRole;
+  const role: InviteRole = "member";
 
   const template = teamInviteEmail({
     inviterFirstName,
     inviterName,
     organisationName: auth.context!.organisationName,
-    role: role.charAt(0).toUpperCase() + role.slice(1),
+    role: "Member",
     roleDescription: emailRoleAccessDescription(role),
     acceptUrl: `${inviteAcceptBaseUrl()}/${token}`,
   });

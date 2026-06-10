@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getOrganisationId } from "@/lib/team/org";
-import { canEditContracts } from "@/lib/team/roles";
-import type { OrganisationRole } from "@/lib/team/types";
+import { canEditContracts, normalizeOrganisationRole } from "@/lib/team/roles";
+import type { OrganisationRole, StoredOrganisationRole } from "@/lib/team/types";
 
 export async function userCanAccessContract(
   supabase: SupabaseClient,
@@ -51,5 +51,6 @@ async function getRoleForContractCheck(
     .eq("status", "active")
     .maybeSingle();
 
-  return (data?.role as OrganisationRole | undefined) ?? null;
+  const stored = data?.role as StoredOrganisationRole | undefined;
+  return stored ? normalizeOrganisationRole(stored) : null;
 }

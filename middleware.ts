@@ -223,35 +223,6 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.redirect(url);
   }
 
-  if (
-    user &&
-    (pathname.startsWith("/api/upload") ||
-      pathname.startsWith("/api/extract") ||
-      pathname.startsWith("/api/chat"))
-  ) {
-    const { data: membership } = await supabase
-      .from("organisation_members")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle();
-
-    const role = membership?.role ?? "owner";
-    const viewerBlocked =
-      role === "viewer" &&
-      (pathname.startsWith("/api/upload") ||
-        pathname.startsWith("/api/extract") ||
-        pathname.startsWith("/api/chat"));
-
-    if (viewerBlocked) {
-      return NextResponse.json(
-        { error: "Viewers have read-only access." },
-        { status: 403 }
-      );
-    }
-  }
-
   if (user && requiresTrialCheck(pathname)) {
     const trialUserId = impersonatedUserId ?? user.id;
     let prefs: {
