@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 const cardClassName =
   "border-zinc-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]";
 
+const cardTitleClassName = "font-sans text-base font-semibold text-zinc-900";
+
 function readImageFile(file: File, onLoad: (previewUrl: string) => void) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -156,7 +158,7 @@ export function SupportPageClient({
             <CheckCircle2 className="size-7" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-zinc-900">
+            <h2 className="font-sans text-xl font-semibold text-zinc-900">
               Ticket submitted
             </h2>
             <p className="mt-2 text-sm text-zinc-500">
@@ -190,7 +192,7 @@ export function SupportPageClient({
       <div className="flex flex-col gap-4">
         <Card className={cardClassName}>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900">
+            <CardTitle className={cn(cardTitleClassName, "flex items-center gap-2")}>
               <Sparkles className="size-4 text-[#F97316]" />
               Tips for faster help
             </CardTitle>
@@ -214,7 +216,12 @@ export function SupportPageClient({
 
         <Card className={cn(cardClassName, "bg-[#111827] text-white")}>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <CardTitle
+              className={cn(
+                cardTitleClassName,
+                "flex items-center gap-2 text-white"
+              )}
+            >
               <LifeBuoy className="size-4 text-[#F97316]" />
               Your details
             </CardTitle>
@@ -245,7 +252,7 @@ export function SupportPageClient({
 
       <Card className={cardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-semibold text-zinc-900">
+          <CardTitle className={cn(cardTitleClassName, "flex items-center gap-2")}>
             <MessageSquareText className="size-4 text-[#F97316]" />
             Open a support ticket
           </CardTitle>
