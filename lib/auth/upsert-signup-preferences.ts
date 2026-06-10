@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { trialExpiresAtFromStart } from "@/lib/trial/constants";
 
 type SignupProfile = {
   userId: string;
@@ -17,8 +18,7 @@ function missingColumn(errorMessage: string, column: string): boolean {
 
 function buildPreferencePayloads(profile: SignupProfile): Record<string, unknown>[] {
   const now = new Date();
-  const trialExpiresAt = new Date(now);
-  trialExpiresAt.setMinutes(trialExpiresAt.getMinutes() + 5);
+  const trialExpiresAt = trialExpiresAtFromStart(now);
 
   const core = {
     user_id: profile.userId,

@@ -7,6 +7,7 @@ import { getDashboardSession } from "@/lib/auth/dashboard-session";
 import { getUserPreferences } from "@/lib/data/user-preferences";
 import { getOrgContextForTeam } from "@/lib/team/org";
 import { bypassesTrialRestrictions } from "@/lib/admin/access";
+import { trialExpiryMsFromTimestamp } from "@/lib/trial/constants";
 import { ensureTrialExpiryNotifications } from "@/lib/trial/notify-trial-expired";
 import { isAwaitingPayment } from "@/lib/trial/access";
 import {
@@ -48,7 +49,7 @@ export default async function DashboardLayout({
 
   const fallbackFromUserCreatedAt = effectiveUserCreatedAt
     ? new Date(
-        new Date(effectiveUserCreatedAt).getTime() + 5 * 60 * 1000
+        trialExpiryMsFromTimestamp(new Date(effectiveUserCreatedAt).getTime())
       ).toISOString()
     : null;
 
@@ -61,7 +62,7 @@ export default async function DashboardLayout({
     const nowIso = new Date().toISOString();
     const fallbackExpiry =
       fallbackFromUserCreatedAt ??
-      new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      new Date(trialExpiryMsFromTimestamp(Date.now())).toISOString();
     const { error } = await dataSupabase.from("user_preferences").upsert(
       {
         user_id: effectiveUserId,

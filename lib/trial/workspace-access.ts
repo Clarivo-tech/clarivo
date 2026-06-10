@@ -5,6 +5,7 @@ import {
   isAwaitingPayment,
   type TrialPrefs,
 } from "@/lib/trial/access";
+import { trialExpiryMsFromTimestamp } from "@/lib/trial/constants";
 
 export function withFallbackTrialExpiry(
   prefs: TrialPrefs,
@@ -20,7 +21,7 @@ export function withFallbackTrialExpiry(
   }
 
   const fallbackExpiry = new Date(
-    new Date(userCreatedAt).getTime() + 5 * 60 * 1000
+    trialExpiryMsFromTimestamp(new Date(userCreatedAt).getTime())
   ).toISOString();
 
   return {

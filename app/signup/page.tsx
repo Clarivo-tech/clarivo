@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CHECKOUT_UPGRADE_PAGE_PATH } from "@/lib/billing/payment-link";
-import { TRIAL_EXPIRED_MESSAGE } from "@/lib/trial/constants";
+import {
+  TRIAL_EXPIRED_MESSAGE,
+  trialExpiresAtFromStart,
+} from "@/lib/trial/constants";
 
 function RequiredLabel({
   htmlFor,
@@ -199,8 +202,7 @@ export default function SignupPage() {
 
     const hasSession = Boolean(data.session);
 
-    const trialExpiresAt = new Date();
-    trialExpiresAt.setMinutes(trialExpiresAt.getMinutes() + 5);
+    const trialExpiresAt = trialExpiresAtFromStart();
 
     try {
       const finalizeRes = await fetch("/api/auth/finalize-signup", {
@@ -313,7 +315,7 @@ export default function SignupPage() {
           <CardDescription>
             {paidIntent
               ? "Create your account and continue to secure payment."
-              : "Start your 5-minute free trial."}
+              : "Start your 5-day free trial."}
           </CardDescription>
         </CardHeader>
         <CardContent>
