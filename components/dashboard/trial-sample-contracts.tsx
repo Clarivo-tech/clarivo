@@ -59,8 +59,8 @@ export function TrialSampleContracts({
             Try a sample contract
           </h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Pick a PDF below to upload it into your trial workspace. You will
-            see the same analyzing step as a real upload.
+            Select the sample PDF contracts below to upload into your trial
+            workspace.
           </p>
         </div>
       </div>
