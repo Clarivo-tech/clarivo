@@ -3,13 +3,16 @@
 import { useRef, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import type { UploadSuccessResponse } from "@/lib/types/upload";
+import { uploadContractPdf } from "@/lib/upload/contract-upload-client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function DocsUpload({
   onUploadComplete,
+  disabled = false,
 }: {
   onUploadComplete: (result: UploadSuccessResponse) => void | Promise<void>;
+  disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,50 +25,17 @@ export function DocsUpload({
     setError(null);
     setUploading(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 125_000);
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      const payload = (await response.json()) as UploadSuccessResponse & {
-        error?: string;
-        step?: string;
-      };
-
-      if (!response.ok) {
-        const step = payload.step ? ` (${payload.step})` : "";
-        throw new Error((payload.error ?? "Upload failed.") + step);
-      }
-
-      await onUploadComplete({
-        success: true,
-        status: "complete",
-        contractId: payload.contractId,
-        contract: payload.contract,
-        contract_data: payload.contract_data,
-      });
+      const result = await uploadContractPdf(file);
+      await onUploadComplete(result);
 
       if (inputRef.current) {
         inputRef.current.value = "";
       }
     } catch (err) {
-      const message =
-        err instanceof Error && err.name === "AbortError"
-          ? "Upload and analysis timed out. Check server logs."
-          : err instanceof Error
-            ? err.message
-            : "Upload failed.";
-      setError(message);
+      setError(
+        err instanceof Error ? err.message : "Upload failed."
+      );
     } finally {
       setUploading(false);
     }
@@ -79,11 +49,11 @@ export function DocsUpload({
         accept="application/pdf"
         className="hidden"
         onChange={handleFileChange}
-        disabled={uploading}
+        disabled={uploading || disabled}
       />
       <Button
         type="button"
-        disabled={uploading}
+        disabled={uploading || disabled}
         onClick={() => inputRef.current?.click()}
         className="bg-[#F97316] text-white hover:bg-[#111827]"
       >

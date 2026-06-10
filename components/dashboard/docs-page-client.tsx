@@ -7,6 +7,7 @@ import type { Contract } from "@/lib/types/contracts";
 import type { UploadSuccessResponse } from "@/lib/types/upload";
 import { DocsUpload } from "@/components/dashboard/docs-upload";
 import { DocsGrid } from "@/components/dashboard/docs-grid";
+import { TrialSampleContracts } from "@/components/dashboard/trial-sample-contracts";
 
 function applyUploadSuccess(
   prev: Contract[],
@@ -39,9 +40,11 @@ function applyUploadSuccess(
 export function DocsPageClient({
   initialContracts,
   canUpload = true,
+  showTrialSamples = false,
 }: {
   initialContracts: Contract[];
   canUpload?: boolean;
+  showTrialSamples?: boolean;
 }) {
   const router = useRouter();
   const [contracts, setContracts] = useState(initialContracts);
@@ -131,7 +134,7 @@ export function DocsPageClient({
         <p className="mt-2 text-sm text-zinc-500">
           Upload a PDF. Storage, AI extraction, and analysis complete in one step.
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-6">
           {canUpload ? (
             <DocsUpload onUploadComplete={handleUploadComplete} />
           ) : (
@@ -140,6 +143,9 @@ export function DocsPageClient({
               workspace owner for access.
             </p>
           )}
+          {showTrialSamples && canUpload ? (
+            <TrialSampleContracts onUploadComplete={handleUploadComplete} />
+          ) : null}
         </div>
       </div>
       <DocsGrid
