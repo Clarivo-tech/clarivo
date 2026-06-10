@@ -54,8 +54,13 @@ export function AnalyticsExportButton({
         reportRef.current,
         analyticsPdfFilename()
       );
-    } catch {
-      window.alert("Could not generate PDF. Please try again.");
+    } catch (error) {
+      console.error("[analytics] PDF export failed:", error);
+      const message =
+        error instanceof Error ? error.message : "Unknown error";
+      window.alert(
+        `Could not generate PDF. ${message || "Please try again."}`
+      );
     } finally {
       setExportingPdf(false);
     }
