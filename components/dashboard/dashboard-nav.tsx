@@ -9,6 +9,7 @@ import {
   FileText,
   HeartPulse,
   LayoutDashboard,
+  LifeBuoy,
   Settings,
   Shield,
   TrendingUp,
@@ -70,6 +71,12 @@ const navItems = [
     href: "/dashboard/team",
     label: "My Team",
     icon: Users,
+    exact: false,
+  },
+  {
+    href: "/dashboard/support",
+    label: "Support",
+    icon: LifeBuoy,
     exact: false,
   },
   {

@@ -33,7 +33,8 @@ function isProtectedRoute(pathname: string): boolean {
     pathname.startsWith("/api/upload") ||
     pathname.startsWith("/api/extract") ||
     pathname.startsWith("/api/chat") ||
-    pathname.startsWith("/api/invite")
+    pathname.startsWith("/api/invite") ||
+    pathname.startsWith("/api/support")
   );
 }
 
@@ -45,7 +46,9 @@ function isTrialPaywallExempt(pathname: string): boolean {
   return (
     pathname === "/trial-expired" ||
     pathname === "/dashboard/upgrade" ||
+    pathname === "/dashboard/support" ||
     pathname === "/api/upgrade" ||
+    pathname === "/api/support" ||
     pathname.startsWith("/dashboard/admin") ||
     pathname.startsWith("/api/admin")
   );
