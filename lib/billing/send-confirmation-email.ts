@@ -17,6 +17,8 @@ export async function sendSubscriptionConfirmationEmail(
     ownerEmail: string | null | undefined;
     licenses: number;
     isAddLicenses: boolean;
+    previousLicenses?: number;
+    additionalLicenses?: number;
   }
 ): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
@@ -66,21 +68,21 @@ export async function sendSubscriptionConfirmationEmail(
     }
   }
 
+  const founderEmail =
+    customerEmail || params.ownerEmail?.trim() || owner.user?.email?.trim() || "";
+
   const founderTemplate = founderSubscriptionPaymentEmail({
     customerName: profile.customerName,
-    email: customerEmail || params.ownerEmail?.trim() || owner.user?.email?.trim() || "",
+    email: founderEmail,
     company: profile.company,
     jobTitle: profile.jobTitle,
     organisationName,
     licenses: params.licenses,
     monthlyTotalLabel,
     paymentKind: params.isAddLicenses ? "add_licenses" : "new_subscription",
+    previousLicenses: params.previousLicenses,
+    additionalLicenses: params.additionalLicenses,
   });
-
-  if (!customerEmail) {
-    console.warn("[billing] Founder payment notification skipped: no customer email.");
-    return;
-  }
 
   try {
     await sendEmail({
@@ -90,5 +92,36 @@ export async function sendSubscriptionConfirmationEmail(
     });
   } catch (error) {
     console.error("[billing] founder payment notification failed:", error);
+  }
+}
+
+export async function sendAddLicensesNotificationEmails(
+  admin: SupabaseClient,
+  params: {
+    userId: string;
+    organisationId: string;
+    ownerEmail?: string | null;
+    previousLicenses: number;
+    newTotal: number;
+    additionalLicenses: number;
+  }
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("[billing] Add-licenses emails skipped: RESEND_API_KEY is not set.");
+    return;
+  }
+
+  try {
+    await sendSubscriptionConfirmationEmail(admin, {
+      userId: params.userId,
+      organisationId: params.organisationId,
+      ownerEmail: params.ownerEmail,
+      licenses: params.newTotal,
+      isAddLicenses: true,
+      previousLicenses: params.previousLicenses,
+      additionalLicenses: params.additionalLicenses,
+    });
+  } catch (error) {
+    console.error("[billing] add-licenses notification emails failed:", error);
   }
 }

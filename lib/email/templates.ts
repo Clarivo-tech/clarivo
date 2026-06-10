@@ -297,28 +297,43 @@ export function founderSubscriptionPaymentEmail(params: {
   licenses: number;
   monthlyTotalLabel: string;
   paymentKind: "new_subscription" | "add_licenses";
+  previousLicenses?: number;
+  additionalLicenses?: number;
 }): EmailTemplate {
   const subject =
     params.paymentKind === "add_licenses"
-      ? `💳 Clarivo license purchase — ${params.company || params.organisationName}`
+      ? `➕ Clarivo licenses added — ${params.company || params.organisationName}`
       : `💳 New Clarivo Pro subscription — ${params.company || params.organisationName}`;
 
   const headline =
     params.paymentKind === "add_licenses"
-      ? "License purchase confirmed"
+      ? "Existing customer added licenses"
       : "New Pro subscription";
+
+  const licenseChangeRow =
+    params.paymentKind === "add_licenses" &&
+    params.previousLicenses != null &&
+    params.additionalLicenses != null
+      ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Change</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>+${params.additionalLicenses}</strong> license${params.additionalLicenses === 1 ? "" : "s"} (${params.previousLicenses} → ${params.licenses})</td></tr>`
+      : "";
+
+  const intro =
+    params.paymentKind === "add_licenses"
+      ? "An existing customer increased their license count. Stripe has been updated and their workspace seat limit was raised."
+      : "A customer completed payment and their workspace was updated.";
 
   const html = shell(
     headline,
     "#111827",
     `
-    <p style="margin:0 0 16px 0;color:#444;">A customer completed payment and their workspace was updated.</p>
+    <p style="margin:0 0 16px 0;color:#444;">${intro}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Name</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.customerName}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px;border-bottom:1px solid #eee;"><a href="mailto:${params.email}" style="color:#F97316;">${params.email}</a></td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Company</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.company || "—"}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Job title</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.jobTitle?.trim() || "—"}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Workspace</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.organisationName}</td></tr>
+      ${licenseChangeRow}
       <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Licenses</td><td style="padding:8px;border-bottom:1px solid #eee;">${params.licenses}</td></tr>
       <tr><td style="padding:8px;color:#666;">Monthly total</td><td style="padding:8px;">${params.monthlyTotalLabel}</td></tr>
     </table>

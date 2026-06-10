@@ -1,6 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { licensesToAmountPence } from "@/lib/billing/constants";
 import { activateOrganisationLicenses } from "@/lib/billing/activate-licenses";
+import { sendAddLicensesNotificationEmails } from "@/lib/billing/send-confirmation-email";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import {
   findActiveStripeSubscriptionForOrganisation,
   getStripePriceId,
@@ -220,6 +222,22 @@ export async function updateSubscriptionLicenses(params: {
 
   if (updateResult.error) {
     return { ok: false, status: 502, error: updateResult.error };
+  }
+
+  const admin = tryCreateAdminClient();
+  if (admin) {
+    await sendAddLicensesNotificationEmails(admin, {
+      userId: params.user.id,
+      organisationId: params.context.organisationId,
+      ownerEmail: params.ownerEmail,
+      previousLicenses: currentTotal,
+      newTotal: params.newTotal,
+      additionalLicenses,
+    });
+  } else {
+    console.warn(
+      "[billing] Add-licenses founder email skipped: SUPABASE_SERVICE_ROLE_KEY not configured."
+    );
   }
 
   return {
