@@ -8,6 +8,7 @@ import { listVendorRows } from "@/lib/data/vendors";
 import { consolidateDuplicateVendors } from "@/lib/vendors/dedupe-vendors";
 import { normalizeVendorName } from "@/lib/vendors/constants";
 import { ensureVendorForContract } from "@/lib/vendors/ensure-vendor";
+import { purgeOrphanedVendors } from "@/lib/vendors/purge-orphaned-vendors";
 
 /**
  * Ensures a vendors row exists for each distinct vendor_name on contract_data,
@@ -21,6 +22,7 @@ export async function syncVendorsFromContracts(
     includeInactive: true,
   });
   if (contracts.length === 0) {
+    await purgeOrphanedVendors(supabase, userId);
     return { synced: 0 };
   }
 
@@ -74,6 +76,7 @@ export async function syncVendorsFromContracts(
 
   const vendors = await listVendorRows(supabase, userId);
   await consolidateDuplicateVendors(supabase, vendors);
+  await purgeOrphanedVendors(supabase, userId);
 
   return { synced };
 }

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getContracts } from "@/lib/data/contracts";
 import { getVendors } from "@/lib/data/vendors";
 import { syncVendorsFromContracts } from "@/lib/vendors/sync-from-contracts";
+import { vendorsWithLinkedContracts } from "@/lib/vendors/vendors-with-contracts";
 import {
   calculateWeightedScore,
   scoreToRag,
@@ -178,22 +180,33 @@ export async function getPerformancePageData(
 ) {
   await syncVendorsFromContracts(supabase, userId);
 
-  const [vendors, reviews, criteria] = await Promise.all([
+  const [vendors, contracts, reviews, criteria] = await Promise.all([
     getVendors(supabase, userId),
+    getContracts(supabase, userId, { includeInactive: true }),
     getPerformanceReviews(supabase, userId),
     getPerformanceCriteria(supabase, userId),
   ]);
 
-  const filteredVendors = filterVendorId
-    ? vendors.filter((v) => v.id === filterVendorId)
-    : vendors;
-
-  const overviews = buildVendorOverviews(filteredVendors, reviews);
-  const stats = computePerformanceStats(
-    buildVendorOverviews(vendors, reviews),
-    reviews
+  const activeVendorIds = new Set(
+    vendorsWithLinkedContracts(vendors, contracts).map((vendor) => vendor.id)
   );
-  const recentReviews = await getRecentReviewsWithVendors(supabase, userId, 12);
+  const activeVendors = vendors.filter((vendor) => activeVendorIds.has(vendor.id));
+  const activeReviews = reviews.filter((review) =>
+    activeVendorIds.has(review.vendor_id)
+  );
+
+  const filteredVendors = filterVendorId
+    ? activeVendors.filter((v) => v.id === filterVendorId)
+    : activeVendors;
+
+  const overviews = buildVendorOverviews(filteredVendors, activeReviews);
+  const stats = computePerformanceStats(
+    buildVendorOverviews(activeVendors, activeReviews),
+    activeReviews
+  );
+  const recentReviews = (
+    await getRecentReviewsWithVendors(supabase, userId, 12)
+  ).filter((review) => activeVendorIds.has(review.vendor_id));
 
   return {
     vendors: filteredVendors,
@@ -201,7 +214,7 @@ export async function getPerformancePageData(
     overviews,
     stats,
     recentReviews,
-    allReviews: reviews,
+    allReviews: activeReviews,
   };
 }
 

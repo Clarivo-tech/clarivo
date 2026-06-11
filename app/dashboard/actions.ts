@@ -24,7 +24,9 @@ import {
 import { sendEmail } from "@/lib/email/send";
 import { founderSubscriptionCancellationRequestEmail } from "@/lib/email/templates";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
+import { findVendorByName } from "@/lib/vendors/ensure-vendor";
 import { deleteVendorIfNoLinkedContracts } from "@/lib/vendors/delete-vendor";
+import { purgeOrphanedVendors } from "@/lib/vendors/purge-orphaned-vendors";
 import { userCanAccessContract } from "@/lib/team/contract-access";
 import { getOrgContextForTeam, getUserRole } from "@/lib/team/org";
 import { canEditContracts } from "@/lib/team/roles";
@@ -355,15 +357,27 @@ export async function deleteContract(
     return { error: "Contract not found." };
   }
 
-  const { data: contract, error: fetchError } = await supabase
-    .from("contracts")
-    .select("storage_path, file_url, vendor_id")
-    .eq("id", contractId)
-    .single();
+  const [{ data: contract, error: fetchError }, { data: contractDataRow }] =
+    await Promise.all([
+      supabase
+        .from("contracts")
+        .select("storage_path, file_url, vendor_id")
+        .eq("id", contractId)
+        .single(),
+      supabase
+        .from("contract_data")
+        .select("vendor_name")
+        .eq("contract_id", contractId)
+        .maybeSingle(),
+    ]);
 
   if (fetchError || !contract) {
     return { error: "Contract not found." };
   }
+
+  const extractedVendorName = (
+    contractDataRow?.vendor_name as string | undefined
+  )?.trim();
 
   const storagePath = getContractStoragePath(contract);
 
@@ -396,6 +410,28 @@ export async function deleteContract(
   );
   if (vendorCleanup.error) {
     return { error: vendorCleanup.error };
+  }
+
+  if (extractedVendorName) {
+    const namedVendor = await findVendorByName(
+      supabase,
+      user.id,
+      extractedVendorName
+    );
+    if (namedVendor) {
+      const namedCleanup = await deleteVendorIfNoLinkedContracts(
+        supabase,
+        namedVendor.id
+      );
+      if (namedCleanup.error) {
+        return { error: namedCleanup.error };
+      }
+    }
+  }
+
+  const purge = await purgeOrphanedVendors(supabase, user.id);
+  if (purge.error) {
+    return { error: purge.error };
   }
 
   revalidatePath("/dashboard");

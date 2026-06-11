@@ -5,6 +5,7 @@ import { getContractData, getContracts } from "@/lib/data/contracts";
 import { getOrganisationId } from "@/lib/team/org";
 import { dedupeVendorsByName } from "@/lib/vendors/dedupe-vendors";
 import { syncVendorsFromContracts } from "@/lib/vendors/sync-from-contracts";
+import { vendorsWithLinkedContracts } from "@/lib/vendors/vendors-with-contracts";
 import type { Contract, ContractData } from "@/lib/types/contracts";
 import type {
   Vendor,
@@ -109,10 +110,19 @@ export async function getVendorPageData(
     getContractData(supabase, userId),
   ]);
 
-  const rows = buildVendorListRows(vendors, contracts, allContractData);
+  const activeVendors = vendorsWithLinkedContracts(vendors, contracts);
+  const rows = buildVendorListRows(activeVendors, contracts, allContractData).filter(
+    (row) => row.contractCount > 0
+  );
   const stats = computeVendorStats(rows);
 
-  return { vendors, contracts, contractData: allContractData, rows, stats };
+  return {
+    vendors: activeVendors,
+    contracts,
+    contractData: allContractData,
+    rows,
+    stats,
+  };
 }
 
 export async function getVendorDetailData(
