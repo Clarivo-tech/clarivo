@@ -9,9 +9,11 @@ import {
   Grid3X3,
   LayoutList,
   Plus,
+  Search,
   Star,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { deleteVendor } from "@/app/dashboard/vendors/actions";
 import { VendorFormSheet } from "@/components/dashboard/vendor-form-sheet";
@@ -22,6 +24,7 @@ import { ExpandableVendorStatCard } from "@/components/dashboard/expandable-vend
 import { StatCard } from "@/components/dashboard/stat-card";
 import { VendorSpendStatCard } from "@/components/dashboard/vendor-spend-stat-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -30,9 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { vendorInitials } from "@/lib/vendors/constants";
+import { VENDOR_INDUSTRIES, vendorInitials } from "@/lib/vendors/constants";
 import type { Vendor, VendorListRow, VendorStats } from "@/lib/types/vendors";
 import { cn } from "@/lib/utils";
+
+const selectClassName =
+  "h-9 rounded-md border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-900 shadow-xs outline-none focus-visible:border-[#F97316] focus-visible:ring-2 focus-visible:ring-[#F97316]/20";
 
 function formatSpend(value: number, currency = "GBP"): string {
   return new Intl.NumberFormat("en-GB", {
@@ -55,6 +61,33 @@ export function VendorsPageClient({
   const [view, setView] = useState<"grid" | "table">("grid");
   const [formOpen, setFormOpen] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
+  const [industryFilter, setIndustryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredRows = useMemo(() => {
+    let result = rows;
+
+    if (industryFilter === "unassigned") {
+      result = result.filter((v) => !v.industry?.trim());
+    } else if (industryFilter !== "all") {
+      result = result.filter((v) => v.industry === industryFilter);
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (v) =>
+          v.name.toLowerCase().includes(q) ||
+          (v.industry?.toLowerCase().includes(q) ?? false) ||
+          (v.vendor_type?.toLowerCase().includes(q) ?? false)
+      );
+    }
+
+    return result;
+  }, [rows, industryFilter, searchQuery]);
+
+  const hasActiveFilters =
+    industryFilter !== "all" || searchQuery.trim().length > 0;
 
   const criticalVendors = useMemo(
     () => rows.filter((v) => v.is_critical),
@@ -147,11 +180,55 @@ export function VendorsPageClient({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-zinc-500">
-          {rows.length} vendor{rows.length === 1 ? "" : "s"}
-        </p>
-        <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search vendors…"
+              className="h-9 pl-9"
+              aria-label="Search vendors"
+            />
+          </div>
+          <select
+            className={cn(selectClassName, "w-full sm:w-auto sm:min-w-[11rem]")}
+            value={industryFilter}
+            onChange={(e) => setIndustryFilter(e.target.value)}
+            aria-label="Filter by industry"
+          >
+            <option value="all">All industries</option>
+            <option value="unassigned">Unassigned</option>
+            {VENDOR_INDUSTRIES.map((industry) => (
+              <option key={industry} value={industry}>
+                {industry}
+              </option>
+            ))}
+          </select>
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-zinc-600"
+              onClick={() => {
+                setIndustryFilter("all");
+                setSearchQuery("");
+              }}
+            >
+              <X className="size-4" />
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <p className="text-sm text-zinc-500">
+            {hasActiveFilters
+              ? `${filteredRows.length} of ${rows.length} vendor${rows.length === 1 ? "" : "s"}`
+              : `${rows.length} vendor${rows.length === 1 ? "" : "s"}`}
+          </p>
+          <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5">
           <button
             type="button"
             onClick={() => setView("grid")}
@@ -178,6 +255,7 @@ export function VendorsPageClient({
             <LayoutList className="size-4" />
             Table
           </button>
+          </div>
         </div>
       </div>
 
@@ -199,9 +277,30 @@ export function VendorsPageClient({
             Add your first vendor
           </Button>
         </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-200 bg-white px-8 py-16 text-center">
+          <Search className="mx-auto size-10 text-zinc-300" />
+          <p className="mt-4 text-base font-medium text-zinc-900">
+            No vendors match your filters
+          </p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Try a different industry or search term.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-6"
+            onClick={() => {
+              setIndustryFilter("all");
+              setSearchQuery("");
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
       ) : view === "grid" ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((vendor) => (
+          {filteredRows.map((vendor) => (
             <Link
               key={vendor.id}
               href={`/dashboard/vendors/${vendor.id}`}
@@ -286,7 +385,7 @@ export function VendorsPageClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((vendor) => (
+              {filteredRows.map((vendor) => (
                 <TableRow key={vendor.id} className="border-zinc-100">
                   <TableCell className="font-medium text-zinc-900">
                     <Link
