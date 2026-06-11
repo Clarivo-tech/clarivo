@@ -79,7 +79,10 @@ export async function POST(
 
   if (dbError) {
     await auth.supabase.storage.from(BUCKET).remove([storagePath]);
-    return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const message = dbError.message.includes("vendor_documents_type_check")
+      ? "This document type is not enabled in the database yet. Run the vendor document types migration in Supabase (see supabase/migrations/20240610000000_vendor_document_types.sql), or choose Insurance, NDA, DPA, or Other for now."
+      : dbError.message;
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   await auth.supabase.from("vendor_activity").insert({
