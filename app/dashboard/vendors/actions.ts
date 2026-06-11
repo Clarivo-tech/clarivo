@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganisationId } from "@/lib/team/org";
 import { getVendorById } from "@/lib/data/vendors";
+import { deleteVendorRecord } from "@/lib/vendors/delete-vendor";
 import type { VendorFormInput, VendorRiskRating, VendorStatus } from "@/lib/types/vendors";
 
 async function requireUser() {
@@ -150,24 +151,8 @@ export async function deleteVendor(
   const vendor = await getVendorById(auth.supabase, auth.user.id, vendorId);
   if (!vendor) return { error: "Vendor not found." };
 
-  await auth.supabase
-    .from("contracts")
-    .update({ vendor_id: null })
-    .eq("vendor_id", vendorId);
-
-  const { data: docs } = await auth.supabase
-    .from("vendor_documents")
-    .select("storage_path")
-    .eq("vendor_id", vendorId);
-
-  if (docs?.length) {
-    await auth.supabase.storage
-      .from("vendors")
-      .remove(docs.map((d) => d.storage_path as string));
-  }
-
-  const { error } = await auth.supabase.from("vendors").delete().eq("id", vendorId);
-  if (error) return { error: error.message };
+  const { error } = await deleteVendorRecord(auth.supabase, vendorId);
+  if (error) return { error };
 
   revalidatePath("/dashboard/vendors");
   return { success: true };

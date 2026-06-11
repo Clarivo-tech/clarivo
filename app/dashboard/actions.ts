@@ -24,6 +24,7 @@ import {
 import { sendEmail } from "@/lib/email/send";
 import { founderSubscriptionCancellationRequestEmail } from "@/lib/email/templates";
 import { getContractStoragePath } from "@/lib/storage/contract-path";
+import { deleteVendorIfNoLinkedContracts } from "@/lib/vendors/delete-vendor";
 import { userCanAccessContract } from "@/lib/team/contract-access";
 import { getOrgContextForTeam, getUserRole } from "@/lib/team/org";
 import { canEditContracts } from "@/lib/team/roles";
@@ -356,7 +357,7 @@ export async function deleteContract(
 
   const { data: contract, error: fetchError } = await supabase
     .from("contracts")
-    .select("storage_path, file_url")
+    .select("storage_path, file_url, vendor_id")
     .eq("id", contractId)
     .single();
 
@@ -378,19 +379,31 @@ export async function deleteContract(
     return { error: storageError.message };
   }
 
+  const linkedVendorId = contract.vendor_id as string | null | undefined;
+
   const { error: deleteError } = await supabase
     .from("contracts")
     .delete()
-    .eq("id", contractId)
-    .eq("user_id", user.id);
+    .eq("id", contractId);
 
   if (deleteError) {
     return { error: deleteError.message };
   }
 
+  const vendorCleanup = await deleteVendorIfNoLinkedContracts(
+    supabase,
+    linkedVendorId
+  );
+  if (vendorCleanup.error) {
+    return { error: vendorCleanup.error };
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/docs");
   revalidatePath("/dashboard/analytics");
+  revalidatePath("/dashboard/vendors");
+  revalidatePath("/dashboard/performance");
+  revalidatePath("/dashboard/contract-health");
   return {};
 }
 
