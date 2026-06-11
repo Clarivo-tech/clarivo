@@ -128,7 +128,7 @@ export function VendorPerformanceSection({
         {chartData.length > 0 ? (
           <Card className={chartCardClass}>
             <CardHeader className="pb-0">
-              <CardTitle className="text-sm font-medium text-zinc-300">
+              <CardTitle className="font-sans text-sm font-medium text-zinc-300">
                 Score trend (last {chartData.length} reviews)
               </CardTitle>
             </CardHeader>
