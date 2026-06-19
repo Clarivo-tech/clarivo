@@ -562,15 +562,19 @@ export function ClarivoLanding() {
                 <h1
                   className={cn(
                     displayFont,
-                    "mt-6 text-4xl font-semibold leading-[1.08] text-[#111111] sm:text-6xl lg:text-6xl xl:text-7xl"
+                    "mt-6 text-[1.75rem] font-semibold leading-[1.12] sm:text-4xl lg:text-[2.5rem] lg:leading-[1.1] xl:text-[2.75rem]"
                   )}
-                  style={{
-                    textShadow:
-                      "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
-                  }}
                 >
-                  Vendor Management
-                  <span className="mt-1 block pl-6 sm:pl-10">
+                  <span
+                    className="block text-[#111111]"
+                    style={{
+                      textShadow:
+                        "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
+                    }}
+                  >
+                    Vendor Management
+                  </span>
+                  <span className="mt-1 block pl-5 text-[#6b7280] sm:pl-8">
                     Contract Intelligence
                   </span>
                 </h1>
