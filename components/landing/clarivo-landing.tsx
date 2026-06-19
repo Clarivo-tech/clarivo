@@ -584,7 +584,7 @@ export function ClarivoLanding() {
                 <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row">
                   <Link
                     href="/signup?intent=trial"
-                    className="w-full rounded-lg bg-[#F97316] px-6 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#111827] sm:w-auto"
+                    className="w-full rounded-lg border border-sky-200 bg-sky-100 px-7 py-4 text-center text-base font-semibold text-sky-900 transition-colors hover:bg-sky-200 sm:w-auto"
                   >
                     Start free trial
                   </Link>
