@@ -25,6 +25,9 @@ export function CustomerWorldMap({ className }: { className?: string }) {
       className={className}
       aria-label="Customer locations: Dubai, Canada, UK, Cyprus, Spain, and Germany"
     >
+      <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
+        Our customers
+      </p>
       <div className="relative aspect-[2/1] w-full">
         <img
           src="/world-map-outline.svg"

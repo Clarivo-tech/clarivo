@@ -591,9 +591,6 @@ export function ClarivoLanding() {
               </div>
 
               <div className="mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none lg:pt-[3.25rem]">
-                <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 lg:text-left">
-                  Our customers
-                </p>
                 <CustomerWorldMap />
               </div>
             </div>
