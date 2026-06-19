@@ -569,7 +569,10 @@ export function ClarivoLanding() {
                       "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
                   }}
                 >
-                  Smart Vendor & Contract Intelligence
+                  Vendor Management
+                  <span className="mt-1 block pl-6 sm:pl-10">
+                    Contract Intelligence
+                  </span>
                 </h1>
                 <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#555555] sm:text-lg">
                   Upload your contracts, Clarivo will do the rest.
