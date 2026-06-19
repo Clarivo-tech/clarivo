@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { ContactSection } from "@/components/landing/contact-section";
+import { CustomerWorldMap } from "@/components/landing/customer-world-map";
 import { cn } from "@/lib/utils";
 
 /** Clean modern display type for hero & brand (system stack). */
@@ -553,38 +554,47 @@ export function ClarivoLanding() {
         {/* Hero */}
         <section className="px-4 pb-20 pt-28 sm:px-6 sm:pb-28 sm:pt-36">
           <div className="mx-auto max-w-6xl">
-            <div className="max-w-3xl text-left">
-              <p className="inline-flex rounded-full border border-[#F97316]/40 bg-[#F97316]/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#F97316]">
-                AI-Powered Contract Intelligence
-              </p>
-              <h1
-                className={cn(
-                  displayFont,
-                  "mt-6 text-4xl font-semibold leading-[1.08] text-[#111111] sm:text-6xl lg:text-7xl"
-                )}
-                style={{
-                  textShadow:
-                    "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
-                }}
-              >
-                Smart Vendor & Contract Intelligence
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#555555] sm:text-lg">
-                Upload your contracts, Clarivo will do the rest.
-              </p>
-              <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row">
-                <Link
-                  href="/signup?intent=trial"
-                  className="w-full rounded-lg bg-[#F97316] px-6 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#111827] sm:w-auto"
+            <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(260px,0.95fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.1fr)_420px] xl:gap-14">
+              <div className="max-w-3xl text-left">
+                <p className="inline-flex rounded-full border border-[#F97316]/40 bg-[#F97316]/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#F97316]">
+                  AI-Powered Contract Intelligence
+                </p>
+                <h1
+                  className={cn(
+                    displayFont,
+                    "mt-6 text-4xl font-semibold leading-[1.08] text-[#111111] sm:text-6xl lg:text-6xl xl:text-7xl"
+                  )}
+                  style={{
+                    textShadow:
+                      "0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(17,24,39,0.1)",
+                  }}
                 >
-                  Start free trial
-                </Link>
-                <Link
-                  href="/book-demo"
-                  className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-center text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
-                >
-                  Demo with a human
-                </Link>
+                  Smart Vendor & Contract Intelligence
+                </h1>
+                <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#555555] sm:text-lg">
+                  Upload your contracts, Clarivo will do the rest.
+                </p>
+                <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row">
+                  <Link
+                    href="/signup?intent=trial"
+                    className="w-full rounded-lg bg-[#F97316] px-6 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#111827] sm:w-auto"
+                  >
+                    Start free trial
+                  </Link>
+                  <Link
+                    href="/book-demo"
+                    className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-center text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 sm:w-auto"
+                  >
+                    Demo with a human
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mx-auto w-full max-w-md lg:mx-0 lg:max-w-none lg:pt-[3.25rem]">
+                <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 lg:text-left">
+                  Our customers
+                </p>
+                <CustomerWorldMap />
               </div>
             </div>
             <div className="mx-auto mt-14 w-full max-w-5xl sm:mt-20 lg:max-w-6xl">
