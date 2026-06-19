@@ -10,6 +10,8 @@ const CUSTOMERS = [
   { name: "Cyprus", lon: 33.43, lat: 35.13 },
   { name: "Spain", lon: -3.7, lat: 40.4 },
   { name: "Germany", lon: 10.45, lat: 51.17 },
+  { name: "New York", lon: -74.01, lat: 40.71 },
+  { name: "Sydney", lon: 151.21, lat: -33.87 },
 ] as const;
 
 function project(lon: number, lat: number) {
@@ -23,7 +25,7 @@ export function CustomerWorldMap({ className }: { className?: string }) {
   return (
     <div
       className={className}
-      aria-label="Customer locations: Dubai, Canada, UK, Cyprus, Spain, and Germany"
+      aria-label="Customer locations: Dubai, Canada, UK, Cyprus, Spain, Germany, New York, and Sydney"
     >
       <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
         Our customers
