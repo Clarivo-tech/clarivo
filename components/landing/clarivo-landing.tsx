@@ -554,7 +554,7 @@ export function ClarivoLanding() {
         {/* Hero */}
         <section className="px-4 pb-20 pt-28 sm:px-6 sm:pb-28 sm:pt-36">
           <div className="mx-auto max-w-6xl">
-            <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(260px,0.95fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.1fr)_420px] xl:gap-14">
+            <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,1fr)] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-10">
               <div className="max-w-3xl text-left">
                 <p className="inline-flex rounded-full border border-[#F97316]/40 bg-[#F97316]/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#F97316]">
                   AI-Powered Contract Intelligence
@@ -590,7 +590,7 @@ export function ClarivoLanding() {
                 </div>
               </div>
 
-              <div className="mx-auto w-full max-w-md lg:mx-0 lg:max-w-none lg:pt-[3.25rem]">
+              <div className="mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none lg:pt-[3.25rem]">
                 <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 lg:text-left">
                   Our customers
                 </p>
